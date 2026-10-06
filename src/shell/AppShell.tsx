@@ -31,6 +31,14 @@ export function AppShell({ features }: Props) {
     <div className="app-shell">
       <header className="app-header" role="banner">
         <div className="app-brand">
+          <img
+            className="brand-glyph"
+            src="/brand/mark.svg"
+            width={22}
+            height={22}
+            alt=""
+            aria-hidden="true"
+          />
           <span className="brand-mark">Race Refinery</span>
           <span className="brand-sub">race telemetry</span>
         </div>

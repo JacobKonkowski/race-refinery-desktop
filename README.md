@@ -1,8 +1,14 @@
 # Race Refinery
 
+<p align="center">
+  <img src="brand/logo-horizontal-dark.png" alt="Race Refinery" width="520" />
+</p>
+
 [![CI](https://github.com/JacobKonkowski/race-refinery-desktop/actions/workflows/ci.yml/badge.svg)](https://github.com/JacobKonkowski/race-refinery-desktop/actions/workflows/ci.yml)
 
 Race Refinery is iRacing telemetry for Windows: post-session IBT analysis, live shared-memory telemetry, a rule-based voice coach, and an in-headset HUD via Race Refinery’s OpenXR layer (plus a local web preview).
+
+Brand assets (icons, logos, promo art) live in [`brand/`](brand/README.md).
 
 **Repository:** [github.com/JacobKonkowski/race-refinery-desktop](https://github.com/JacobKonkowski/race-refinery-desktop)
 

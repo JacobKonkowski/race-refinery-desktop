@@ -21,18 +21,27 @@
 
 .app-brand {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   font-weight: 600;
   letter-spacing: 0.3px;
 }
+.app-brand .brand-glyph {
+  display: block;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+}
 .app-brand .brand-mark {
   color: var(--color-accent);
+  line-height: 1;
 }
 .app-brand .brand-sub {
   color: var(--color-text-faint);
   font-size: 12px;
   font-weight: 400;
+  align-self: baseline;
+  margin-top: 2px;
 }
 
 .app-header-actions {

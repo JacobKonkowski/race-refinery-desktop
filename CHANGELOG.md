@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Modular foundation work in progress (workspace crates, dual-surface widgets, OSS hygiene).
 - **Voice Studio** and shareable **voice packs**: record the coach in-app (hold Space, take clean-up, undo), preview composed callouts, and import / export zips or linked folders. See [docs/VOICE_PACKS.md](docs/VOICE_PACKS.md).
+- **Brand system**: app icons, mark/logo SVGs, and promo/social art under [`brand/`](brand/README.md); desktop icons in `src-tauri/icons/` and runtime assets in `public/brand/`.
 
 ### Changed
 

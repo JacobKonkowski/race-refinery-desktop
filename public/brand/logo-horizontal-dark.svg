@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" fill="none">
+  <rect width="1280" height="360" fill="#0B0E14"/>
+  <g transform="translate(40, 48) scale(0.52)">
+    <path d="M 104.00,216.10 C 134.40,216.10 153.40,216.10 172.40,231.30 C 191.40,246.50 200.90,276.90 219.90,297.80 C 238.90,318.70 261.70,326.30 284.50,309.20 L 326.30,267.40 L 347.20,290.20 L 375.70,248.40" fill="none" stroke="#4AA3FF" stroke-width="34.20" stroke-linecap="round" stroke-linejoin="round"/><rect x="392.80" y="259.80" width="20.90" height="66.50" rx="5.70" fill="#4AA3FF"/><rect x="428.90" y="221.80" width="20.90" height="104.50" rx="5.70" fill="#4AA3FF"/><rect x="465.00" y="183.80" width="20.90" height="142.50" rx="5.70" fill="#4AA3FF"/><circle cx="284.50" cy="309.20" r="13.30" fill="#B8E0FF"/>
+  </g>
+  <text x="360" y="168" fill="#E6EDF3" font-family="Segoe UI, Bahnschrift, Arial Narrow, Arial, sans-serif"
+        font-size="84" font-weight="700" letter-spacing="2">Race Refinery</text>
+  <text x="364" y="224" fill="#8B95A5" font-family="Segoe UI, Bahnschrift, Arial, sans-serif"
+        font-size="34" font-weight="400" letter-spacing="4">race telemetry</text>
+</svg>
