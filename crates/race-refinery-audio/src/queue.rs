@@ -75,19 +75,18 @@ impl SpeechQueue {
 
 #[cfg(test)]
 mod tests {
-    use super::super::speech::SpeechUnit;
     use super::*;
 
-    fn tts_plan(text: &str) -> SpeechPlan {
-        SpeechPlan::sequence(vec![SpeechUnit::Tts(text.into())])
+    fn plan(key: &str) -> SpeechPlan {
+        SpeechPlan::clip(key)
     }
 
     #[test]
     fn drains_highest_priority_first() {
         let mut q = SpeechQueue::new(3);
-        q.push(SpeechPriority::PACE, tts_plan("pace"));
-        q.push(SpeechPriority::CRITICAL, tts_plan("critical"));
-        q.push(SpeechPriority::PACK, tts_plan("pack"));
+        q.push(SpeechPriority::PACE, plan("pace"));
+        q.push(SpeechPriority::CRITICAL, plan("critical"));
+        q.push(SpeechPriority::PACK, plan("pack"));
         assert_eq!(q.pop().unwrap().display_text(), "critical");
         assert_eq!(q.pop().unwrap().display_text(), "pack");
         assert_eq!(q.pop().unwrap().display_text(), "pace");
@@ -96,9 +95,9 @@ mod tests {
     #[test]
     fn overflow_drops_lowest() {
         let mut q = SpeechQueue::new(2);
-        q.push(SpeechPriority::PACE, tts_plan("pace"));
-        q.push(SpeechPriority::PACK, tts_plan("pack"));
-        q.push(SpeechPriority::CRITICAL, tts_plan("critical"));
+        q.push(SpeechPriority::PACE, plan("pace"));
+        q.push(SpeechPriority::PACK, plan("pack"));
+        q.push(SpeechPriority::CRITICAL, plan("critical"));
         assert_eq!(q.len(), 2);
         assert_eq!(q.pop().unwrap().display_text(), "critical");
         assert_eq!(q.pop().unwrap().display_text(), "pack");

@@ -39,25 +39,17 @@ irsdkEnableDisk=1
 
 Restart iRacing after changing. Record with **Alt+L** → `Documents\iRacing\telemetry\*.ibt`.
 
-## Coach voice and clips (dev)
+## Coach voice
 
-The coach speaks numbers with a bundled Piper neural voice that is not committed (about 78 MB). Fetch it once per checkout, before `tauri dev` or `tauri build`:
+The coach speaks only human recordings from a **voice pack**; there is no text-to-speech and nothing to download. The bundled pack under `src-tauri/resources/audio/coach/default/` is a complete recorded voice and is used out of the box. To use a different voice:
 
-```powershell
-.\scripts\fetch-piper-voice.ps1
-```
+1. Open **Voice Studio** (sidebar), create a pack, and record the **Spotter** tier first (flags, traffic, race clock). Add the **Engineer** tier (numbers and glue words) for lap times, gaps, and fuel.
+2. Or import a shared pack in **Settings → Audio coach → Import zip**.
+3. Select the pack in **Settings → Audio coach → Voice pack**.
 
-Without it the app still runs, but numbers fall back to the robotic Windows speech.
+Test Coach plays a sample lap callout with the active pack and volume, and lists any clips it skipped. See [VOICE_PACKS.md](VOICE_PACKS.md).
 
-The fixed callouts are committed WAVs under `src-tauri/resources/audio/coach/default/`, baked with the same voice. Re-bake only after editing `scripts/audio-phrases.txt`:
-
-```powershell
-.\scripts\generate-audio-clips.ps1
-# Silent placeholders for CI / layout:
-.\scripts\generate-audio-clips.ps1 -Engine Placeholder
-```
-
-Test Coach plays a lap callout (clips plus a live lap time) with the saved voice, speed and volume.
+If you have an older checkout, the gitignored `src-tauri/resources/audio/coach/piper/` folder (about 78 MB) is no longer used and can be deleted.
 
 ---
 
@@ -65,7 +57,7 @@ Test Coach plays a lap callout (clips plus a live lap time) with the saved voice
 
 1. **app.ini** — `irsdkEnableMem=1` and `irsdkEnableDisk=1`, then restart iRacing.
 2. **Import** — Confirm Analyze can see sessions (auto-watcher or Import). Reimport after schema upgrades.
-3. **Test Coach** — Live tab → Test Coach. You should hear a radio-style lap callout in one natural voice.
+3. **Test Coach** — Live tab → Test Coach. You should hear a radio-style lap callout in your pack's voice; a toast names any clips the pack has not recorded.
 4. **Demo clock** — Start Demo Clock on Live to exercise UI / SHM test pattern without a session.
 5. **HUD preview** — Open HUD preview → browser at `http://127.0.0.1:17342/vr`.
 6. **Other OpenXR layers** — Disable any other OpenXR API layers that composite overlays. Only one layer stack should own compositing while you test Race Refinery.
@@ -85,7 +77,4 @@ If the headset stays blank: layer ready + DLL present, OpenXR (not OpenVR), no c
 | Practice with coach | Live → Start live + Start audio |
 | Headset HUD | Live → Install layer once → Start HUD |
 | Offline UI check | Live → Demo clock / Test Coach / HUD preview |
-
-## Audio clip regeneration
-
-After editing `scripts/audio-phrases.txt`, re-run the PowerShell script and commit WAVs + `manifest.json`.
+| Record or check the coach voice | Voice Studio → Record / Preview |

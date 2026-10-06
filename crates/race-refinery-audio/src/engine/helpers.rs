@@ -1,7 +1,7 @@
-﻿use race_refinery_live::PackState;
+use race_refinery_live::PackState;
 use race_refinery_settings::{AppSettings, ChatterLevel};
 
-use super::super::phrasing::format_delta_tts;
+use super::super::phrasing::push_delta;
 use super::super::speech::{SpeechPlan, SpeechUnit};
 
 pub fn pack_clear_clip(prev_pack: PackState) -> &'static str {
@@ -13,36 +13,21 @@ pub fn pack_clear_clip(prev_pack: PackState) -> &'static str {
 }
 
 pub fn push_pace_delta_units(units: &mut Vec<SpeechUnit>, delta_ms: f64) {
-    let abs = delta_ms.abs();
-    if abs < 50.0 {
+    if delta_ms.abs() < 50.0 {
         units.push(SpeechUnit::Clip("pace_matching_best".into()));
-    } else if delta_ms > 0.0 {
-        units.push(SpeechUnit::Clip("pace_off_pb_intro".into()));
-        units.push(SpeechUnit::Tts(format_delta_tts(delta_ms)));
-    } else {
-        units.push(SpeechUnit::Tts(format_delta_tts(delta_ms)));
+        return;
     }
+    if delta_ms > 0.0 {
+        units.push(SpeechUnit::Clip("pace_off_pb_intro".into()));
+    }
+    push_delta(units, delta_ms);
 }
 
-pub fn push_pace_delta_with_suffix(units: &mut Vec<SpeechUnit>, delta_ms: f64, suffix: &str) {
-    let abs = delta_ms.abs();
-    if abs < 50.0 {
-        units.push(SpeechUnit::Clip("pace_matching_best".into()));
-        units.push(SpeechUnit::Tts(suffix.into()));
-    } else if delta_ms > 0.0 {
-        units.push(SpeechUnit::Clip("pace_off_pb_intro".into()));
-        units.push(SpeechUnit::Tts(format!(
-            "{} {}",
-            format_delta_tts(delta_ms).trim_end_matches('.'),
-            suffix
-        )));
-    } else {
-        units.push(SpeechUnit::Tts(format!(
-            "{} {}",
-            format_delta_tts(delta_ms).trim_end_matches('.'),
-            suffix
-        )));
-    }
+/// Delta followed by the `suffix_clip` naming what it is relative to
+/// (`versus_previous_lap`, `off_session_best`).
+pub fn push_pace_delta_with_suffix(units: &mut Vec<SpeechUnit>, delta_ms: f64, suffix_clip: &str) {
+    push_pace_delta_units(units, delta_ms);
+    units.push(SpeechUnit::Clip(suffix_clip.into()));
 }
 
 pub fn estimate_laps_remaining(fuel_level: f32, fuel_per_lap: &[f32]) -> Option<f32> {

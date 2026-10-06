@@ -2,7 +2,10 @@
 //!
 //! Every `#[tauri::command]` here is registered in [`crate::run`] and wrapped by
 //! the frontend API layer. Analyze commands stay available; live / audio / VR
-//! are restored for the usable rebuild milestone.
+//! are restored for the usable rebuild milestone. Voice pack and Voice Studio
+//! commands live in [`voice`].
+pub mod voice;
+
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
@@ -356,7 +359,7 @@ pub fn get_settings(state: State<'_, Arc<AppState>>) -> AppSettings {
 
 /// Persist `settings`, apply side effects (recenter bindings), update state and
 /// notify listeners. A hotkey that cannot be registered rejects the whole save.
-fn persist_settings(
+pub(crate) fn persist_settings(
     app: &AppHandle,
     state: &AppState,
     settings: AppSettings,
@@ -437,33 +440,6 @@ mod settings_patch_tests {
     }
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TtsVoiceInfo {
-    pub display_name: String,
-    pub language: String,
-    pub gender: String,
-    pub neural: bool,
-}
-
-/// Installed Windows speech voices for the coach voice picker.
-#[tauri::command]
-pub async fn list_tts_voices_cmd() -> Result<Vec<TtsVoiceInfo>, String> {
-    let voices = tokio::task::spawn_blocking(crate::audio::tts_winrt::WinRtTts::list_voices)
-        .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())?;
-    Ok(voices
-        .into_iter()
-        .map(|v| TtsVoiceInfo {
-            display_name: v.display_name,
-            language: v.language,
-            gender: v.gender,
-            neural: v.neural,
-        })
-        .collect())
-}
-
 // --- VR recenter -------------------------------------------------------------
 
 #[tauri::command]
@@ -504,7 +480,8 @@ pub fn stop_audio_coach(state: State<'_, Arc<AppState>>) -> Result<(), String> {
 
 #[tauri::command]
 pub fn get_audio_coach_status(state: State<'_, Arc<AppState>>) -> crate::audio::AudioCoachStatus {
-    state.audio.status()
+    let settings = state.settings.lock().clone();
+    state.audio.status(&settings)
 }
 
 #[tauri::command]
@@ -512,10 +489,16 @@ pub fn get_audio_coach_message(state: State<'_, Arc<AppState>>) -> String {
     state.audio.last_message()
 }
 
+/// Play a lap callout with the active voice pack; reports clips the pack lacks.
 #[tauri::command]
-pub fn test_audio_coach(state: State<'_, Arc<AppState>>) -> Result<(), String> {
-    state.audio.speak_test();
-    Ok(())
+pub async fn test_audio_coach(
+    state: State<'_, Arc<AppState>>,
+) -> Result<crate::audio::PlayReport, String> {
+    let audio = state.audio.clone();
+    tokio::task::spawn_blocking(move || audio.speak_test())
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| format!("{e:#}"))
 }
 
 // --- Monitor overlays -------------------------------------------------------
@@ -607,25 +590,17 @@ fn vr_layer_manifest_path(app: &AppHandle) -> Result<String, String> {
     Ok(candidate.to_string_lossy().into_owned())
 }
 
-/// Coach clip folder: bundled resources in a packaged build, else the `src-tauri`
-/// tree under `tauri dev`. `None` when neither holds a `manifest.json`.
+/// Bundled voice pack folder: bundled resources in a packaged build, else the
+/// `src-tauri` tree under `tauri dev`. `None` when neither holds a `manifest.json`.
 pub(crate) fn coach_clips_dir(app: &AppHandle) -> Option<PathBuf> {
-    coach_resource_dir(app, crate::audio::COACH_CLIPS_REL, "manifest.json")
-}
-
-/// Piper voice folder, resolved like [`coach_clips_dir`]; `None` when not installed.
-pub(crate) fn coach_voice_dir(app: &AppHandle) -> Option<PathBuf> {
-    coach_resource_dir(app, crate::audio::PIPER_VOICE_REL, "tokens.txt")
-}
-
-fn coach_resource_dir(app: &AppHandle, rel: &str, marker: &str) -> Option<PathBuf> {
     use tauri::Manager;
+    let rel = crate::audio::COACH_CLIPS_REL;
     let bundled = app.path().resource_dir().ok().map(|dir| dir.join(rel));
     let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(rel);
     bundled
         .into_iter()
         .chain(std::iter::once(dev))
-        .find(|dir| dir.join(marker).is_file())
+        .find(|dir| dir.join("manifest.json").is_file())
 }
 
 #[tauri::command]

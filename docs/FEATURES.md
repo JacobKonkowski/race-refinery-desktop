@@ -1,6 +1,6 @@
 # Features
 
-Race Refinery exposes features via `src/features/registry.ts`: **Analyze**, **Live**, and **Settings**.
+Race Refinery exposes features via `src/features/registry.ts`: **Analyze**, **Live**, **Voice Studio**, and **Settings**.
 
 ## Analyze
 
@@ -33,8 +33,8 @@ The Compare throttle chart shades where **traction control** held throttle below
 | Live monitor | Shared-memory telemetry snapshot + status |
 | Leaderboard | Positions, best/last, gaps |
 | Coach preview | Last coach message + widget preview |
-| Audio coach | Rule engine priorities; WAV clips + WinRT TTS |
-| Test Coach | One-shot TTS path (works without WAV assets) |
+| Audio coach | Rule engine priorities; every word is a human recording from the active voice pack (no TTS) |
+| Test Coach | One-shot lap callout (lap number, lap time, delta) with the active pack; names any missing clips |
 | Demo clock | Synthetic session clock / offline exercise |
 | Native VR HUD | OpenXR API layer + shared memory (default `vrMode: native`) |
 | Web HUD | HTTP server `:17342` for browser preview |
@@ -45,7 +45,18 @@ Overlay layout settings configure a **shared widget catalog** (coach / standings
 
 ## Settings
 
-Persisted via `get_settings` / `save_settings_cmd` (full write) or `patch_settings_cmd` (merge top-level keys). The **Settings** page covers VR HUD mode, per-widget VR placement, recenter bindings (keyboard / wheel button), and the audio coach: voice (bundled Race Refinery neural voice, or a Windows voice from `list_tts_voices_cmd` for numbers), speed, volume, pause between calls, low-fuel threshold, chatter level, fuel-call margin, radio beep, and every callout category. The Live page keeps quick toggles for common audio categories plus monitor overlay and VR actions (including Recenter and coach VR size/opacity/height sliders).
+Persisted via `get_settings` / `save_settings_cmd` (full write) or `patch_settings_cmd` (merge top-level keys). The **Settings** page covers VR HUD mode, per-widget VR placement, recenter bindings (keyboard / wheel button), and the audio coach: voice pack (picker with Spotter / Engineer progress, clone, zip import / export, WAV-folder import, linked folders), volume, pause between calls, low-fuel threshold, chatter level, fuel-call margin, radio beep, and every callout category. The Live page keeps quick toggles for common audio categories, shows the active pack, and has monitor overlay and VR actions (including Recenter and coach VR size/opacity/height sliders).
+
+## Voice Studio
+
+Records and checks voice packs for the coach (see [VOICE_PACKS.md](VOICE_PACKS.md)).
+
+| Capability | Notes |
+|------------|--------|
+| Record | Phrase checklist (missing / Spotter / Engineer filters), teleprompter, hold Space to record, auto-advance, mic picker and level meter |
+| Take clean-up | Resample, high-pass, trim, noise gate, loudness normalize; clipping / quiet / length warnings; one-level undo per phrase |
+| Preview | Preset callouts, a composer for any lap time / gap / fuel / incident value, and a Spotter playlist with pause / skip |
+| Packs | New, clone, use for coach; the bundled pack is read-only |
 
 ## Track map
 

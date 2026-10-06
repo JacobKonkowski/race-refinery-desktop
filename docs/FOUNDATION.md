@@ -8,6 +8,7 @@ Race Refinery is a **Windows** desktop app for iRacing:
 
 - **Analyze** — import IBT files, review laps, compare traces
 - **Live** — shared-memory telemetry, voice coach, dual-surface widgets
+- **Voice Studio** — record the coach's voice packs (human recordings only, no TTS)
 
 Surfaces for live widgets: **monitor** (always-on-top windows) and **VR** (OpenXR API layer). One widget catalog; enable once, place twice.
 
@@ -21,7 +22,7 @@ Surfaces for live widgets: **monitor** (always-on-top windows) and **VR** (OpenX
 | `race-refinery-storage` | SQLite | analysis |
 | `race-refinery-ingest` | IBT parse/import/watcher | analysis, storage, telemetry |
 | `race-refinery-live` | LiveSnapshot producer | telemetry, settings |
-| `race-refinery-audio` | Path B coach | live, settings |
+| `race-refinery-audio` | Path B coach, voice packs, mic recording, preview | live, settings |
 | `race-refinery-monitor` | Desktop monitor widget host | live, settings |
 | `race-refinery-vr` | SHM + OpenXR install + web HUD | live, settings |
 | `race-refinery-desktop` (`src-tauri`) | Tauri commands / composition | all |

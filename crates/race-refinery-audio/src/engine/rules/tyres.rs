@@ -1,7 +1,7 @@
 ﻿use race_refinery_settings::AppSettings;
 
 use super::super::super::queue::SpeechPriority;
-use super::super::super::speech::{SpeechPlan, SpeechUnit};
+use super::super::super::speech::SpeechPlan;
 use super::super::candidate::{Candidate, Mark};
 use super::super::context::RaceContext;
 use super::super::helpers::wrap_with_radio;
@@ -47,15 +47,9 @@ impl Rule for TyresRule {
         if max < HOT_TYRE_THRESHOLD {
             return;
         }
-        let mut units = vec![SpeechUnit::Clip("tyre_hot".into())];
-        if let Some(compound) = &ctx.meta.tyre_compound {
-            if !compound.is_empty() {
-                units.push(SpeechUnit::Tts(compound.clone()));
-            }
-        }
         out.push(Candidate {
             priority: SpeechPriority::RACE,
-            plan: wrap_with_radio(settings, SpeechPlan::sequence(units)),
+            plan: wrap_with_radio(settings, SpeechPlan::clip("tyre_hot")),
             mark: Mark::TyreHot,
         });
     }

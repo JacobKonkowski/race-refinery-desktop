@@ -4,24 +4,18 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Path B audio coach (WAV clips + Piper neural TTS, WinRT fallback)"
+description = "Audio coach: human-recorded voice packs, clip stitching, and the Voice Studio recorder"
 
 [dependencies]
 race-refinery-live = { path = "../race-refinery-live" }
 race-refinery-settings = { path = "../race-refinery-settings" }
 anyhow = "1"
+cpal = "0.15"
+hound = "3.5"
 parking_lot = "0.12"
 rodio = { version = "0.19", default-features = false, features = ["wav"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sherpa-onnx = "1.13.8"
 tokio-util = { version = "0.7", features = ["rt"] }
 tracing = "0.1"
-
-[target.'cfg(windows)'.dependencies]
-windows = { version = "0.58", features = [
-    "Foundation",
-    "Foundation_Collections",
-    "Media_SpeechSynthesis",
-    "Storage_Streams",
-] }
+zip = { version = "2", default-features = false, features = ["deflate"] }

@@ -124,7 +124,7 @@ mod tests {
         let mut engine = RaceEngine::new();
         let plan = engine.poll(&base_snapshot(), &settings());
         assert!(plan.is_some());
-        assert!(plan.unwrap().1.display_text().contains("Test Track"));
+        assert!(plan.unwrap().1.display_text().contains("[intro_online]"));
     }
 
     #[test]
@@ -171,7 +171,7 @@ mod tests {
         snap.track = "Other Track".into();
         let intro2 = engine.poll(&snap, &settings());
         assert!(intro2.is_some());
-        assert!(intro2.unwrap().1.display_text().contains("Other Track"));
+        assert!(intro2.unwrap().1.display_text().contains("[intro_online]"));
     }
 
     #[test]

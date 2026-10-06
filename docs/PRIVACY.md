@@ -14,7 +14,8 @@ Race Refinery is designed to run **entirely on your machine**.
 |------|----------|
 | Imported sessions / laps | SQLite under `%LOCALAPPDATA%\race-refinery\` |
 | Settings | JSON beside the database |
-| Coach WAV clips | Bundled app resources (and any you generate locally) |
+| Coach voice packs | Bundled pack in app resources; packs you record or import under `%LOCALAPPDATA%\race-refinery\voice-packs\`; linked folders stay where you put them |
+| Microphone audio | Captured only while you hold record in Voice Studio; the cleaned take is saved to the pack and nothing is sent anywhere |
 | OpenXR layer install | Per-user registry + staged DLL under AppData |
 | Logs | Process stdout/stderr when you enable `RUST_LOG` |
 
@@ -24,7 +25,8 @@ When logging is enabled (`RUST_LOG=…`), messages may include:
 
 - File paths under your iRacing telemetry folder
 - Track/car names and session identifiers from the sim
-- Error strings from import, live connect, or VR layer install
+- Error strings from import, live connect, VR layer install, or voice pack load / record
+- Voice pack folder paths and missing clip keys (`voice pack '…' has no clip for <key>`)
 
 Do not share raw logs publicly if they contain paths or driver names you want private.
 

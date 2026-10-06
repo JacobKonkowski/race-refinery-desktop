@@ -196,8 +196,17 @@ pub struct AppSettings {
     /// Shared widget catalog for monitor windows and the VR compositor.
     pub overlay_layout: OverlayLayout,
     pub audio_coach_enabled: bool,
-    /// Speech rate for Windows TTS (0.5 = slow, 1.0 = normal, up to 6.0).
-    pub audio_coach_rate: f32,
+    /// Active voice pack: `default` (bundled), a user pack id, or an absolute
+    /// folder path. Replaces the retired `audioCoachVoice` / `audioCoachRate`,
+    /// which older configs still carry and deserialization ignores.
+    pub audio_coach_pack_id: String,
+    /// Folders linked as voice packs, so the picker lists them.
+    pub audio_coach_pack_folders: Vec<String>,
+    /// Voice Studio microphone (cpal input device name); empty = system default.
+    pub audio_coach_mic_device: String,
+    /// Voice Studio selects the next missing phrase after each saved take.
+    #[serde(default = "default_true")]
+    pub audio_studio_auto_advance: bool,
     /// Speech volume (0.0-1.0).
     pub audio_coach_volume: f32,
     pub audio_coach_fuel_threshold: f32,
@@ -212,9 +221,6 @@ pub struct AppSettings {
     pub audio_pits_open_enabled: bool,
     #[serde(default)]
     pub audio_coach_chatter_level: ChatterLevel,
-    /// WinRT voice display name; empty = system default.
-    #[serde(default)]
-    pub audio_coach_voice: String,
     #[serde(default = "default_true")]
     pub audio_session_intro_enabled: bool,
     #[serde(default = "default_true")]
@@ -262,7 +268,10 @@ impl Default for AppSettings {
             vr_field_pace_mode: "best".into(),
             overlay_layout: OverlayLayout::default(),
             audio_coach_enabled: true,
-            audio_coach_rate: 1.0,
+            audio_coach_pack_id: "default".into(),
+            audio_coach_pack_folders: Vec::new(),
+            audio_coach_mic_device: String::new(),
+            audio_studio_auto_advance: true,
             audio_coach_volume: 1.0,
             audio_coach_fuel_threshold: 5.0,
             audio_pack_alerts_enabled: true,
@@ -275,7 +284,6 @@ impl Default for AppSettings {
             audio_race_clock_enabled: true,
             audio_pits_open_enabled: true,
             audio_coach_chatter_level: ChatterLevel::Normal,
-            audio_coach_voice: String::new(),
             audio_session_intro_enabled: true,
             audio_position_callouts_enabled: true,
             audio_tyre_alerts_enabled: true,
@@ -290,11 +298,15 @@ impl Default for AppSettings {
     }
 }
 
-pub fn settings_path() -> PathBuf {
+/// Per-user app data folder (`%LOCALAPPDATA%\race-refinery`).
+pub fn data_dir() -> PathBuf {
     dirs::data_local_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("race-refinery")
-        .join("settings.json")
+}
+
+pub fn settings_path() -> PathBuf {
+    data_dir().join("settings.json")
 }
 
 pub fn load_settings() -> AppSettings {
@@ -448,6 +460,22 @@ mod tests {
         assert_eq!(json["overlayLayout"]["widgets"][0]["vrLock"], "world");
         let back: AppSettings = serde_json::from_value(json).unwrap();
         assert_eq!(back.vr_recenter_button, settings.vr_recenter_button);
+    }
+
+    #[test]
+    fn retired_voice_settings_are_ignored() {
+        let value = serde_json::json!({
+            "audioCoachVoice": "Microsoft Guy",
+            "audioCoachRate": 1.4,
+            "audioCoachVolume": 0.5,
+        });
+        let settings: AppSettings = serde_json::from_value(value).expect("deserialize");
+        assert_eq!(settings.audio_coach_volume, 0.5);
+        assert_eq!(settings.audio_coach_pack_id, "default");
+        assert!(settings.audio_studio_auto_advance);
+        let json = serde_json::to_value(&settings).unwrap();
+        assert!(json.get("audioCoachVoice").is_none());
+        assert!(json.get("audioCoachRate").is_none());
     }
 
     #[test]

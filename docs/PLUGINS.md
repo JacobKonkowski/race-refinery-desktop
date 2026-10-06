@@ -7,7 +7,7 @@ slices** (or forks) using stable seams:
 
 1. Add `crates/race-refinery-audio/src/engine/rules/my_rule.rs`
 2. Register in `rules/mod.rs`
-3. Add phrases / WAVs if needed (`scripts/audio-phrases.txt`)
+3. Add phrase keys if needed (`crates/race-refinery-audio/src/phrases.txt`); packs record them in Voice Studio
 4. Unit-test the rule with a synthetic `LiveSnapshot`
 
 Do not call Tauri or storage from a rule — only `RaceContext` / settings flags.

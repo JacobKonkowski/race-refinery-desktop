@@ -36,7 +36,7 @@ Short rationale for non-obvious decisions (ADR-lite). Each entry: context → de
 
 ## One alert per poll + speech queue
 
-**Context:** Unbounded TTS would stack unintelligibly under yellow + pack + lap complete.
+**Context:** Unbounded speech would stack unintelligibly under yellow + pack + lap complete.
 
 **Decision:** Coach picks highest priority per 250 ms tick; `SpeechQueue` plays one plan at a time.
 
@@ -44,13 +44,13 @@ Short rationale for non-obvious decisions (ADR-lite). Each entry: context → de
 
 ---
 
-## Clips for fixed phrases, WinRT for numbers
+## Human-recorded voice packs only, no TTS
 
-**Context:** Heavy in-process synthesis adds latency and packaging complexity during a race.
+**Context:** Earlier builds baked clips with a neural TTS voice (Piper) and synthesized free-form lines live, with Windows speech as a fallback. Short synthesized words, numbers especially, came out slurred or with a trailing mumble, and drivers described the result as robotic or drunk. Cloud voices were ruled out: the app is local-only and free to run.
 
-**Decision:** Ship WAV clips for flags/pack/fuel phrases; WinRT synthesizes only dynamic numbers/strings at runtime. Offline clip bake uses `gen-audio-clips` at dev time.
+**Decision:** Every word the coach says is a human recording in a **voice pack**. The app ships a Voice Studio that records, cleans, and previews packs, and packs are shared as zips or folders. Free-form lines (track name, session type, tyre compound) were dropped or rewritten as fixed phrases, and numbers are composed from a small recorded set: 0–20 and the round tens, with 21–99 as tens + ones and 100+ digit by digit. The phrase registry is split into a **Spotter** tier (stand-alone safety and traffic lines) and an **Engineer** tier (numbers and glue words), so a partly recorded pack still covers the calls that matter most. A callout with a missing clip is skipped rather than filled in by a robot voice.
 
-**Consequences:** Predictable latency; voice quality depends on committed WAVs.
+**Consequences:** One natural voice with no synthesis anywhere and no model download (the old 78 MB voice is gone). The bundled pack is the maintainer's own recordings, so the app speaks out of the box; any other voice has to be recorded or imported. Prosody across chained number clips is flatter than a spoken sentence, which recording the number clips flat mitigates. Speed is whatever the speaker recorded (the old `audioCoachRate` setting is retired). Adding a callout means adding a registry key that every pack must then record.
 
 ---
 

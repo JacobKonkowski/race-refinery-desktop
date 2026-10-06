@@ -1059,3 +1059,237 @@
   font-weight: 600;
   font-size: 12px;
 }
+
+/* --- Voice packs / Voice Studio --- */
+.tier-badges {
+  display: inline-flex;
+  gap: 6px;
+}
+.tier-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.tier-badge.complete,
+.tier-badge.spotter {
+  border-color: var(--color-fast);
+  color: var(--color-fast);
+}
+.studio-page {
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.studio-intro {
+  margin-top: 0;
+  max-width: 760px;
+}
+.studio-tabs,
+.studio-name-form {
+  margin-top: 12px;
+}
+.studio-input {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  font-size: 13px;
+  min-width: 0;
+}
+.studio-record {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+  min-height: 460px;
+}
+.studio-checklist {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 640px;
+}
+.studio-checklist-scroll {
+  overflow-y: auto;
+  padding: 4px 0 8px;
+}
+.studio-empty {
+  padding: 12px 16px;
+}
+.studio-group {
+  padding: 10px 16px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+.studio-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 16px;
+  background: none;
+  border: none;
+  border-left: 2px solid transparent;
+  color: var(--color-text);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.studio-item:hover {
+  background: var(--color-surface-hover);
+}
+.studio-item.active {
+  background: rgba(74, 163, 255, 0.12);
+  border-left-color: var(--color-accent);
+}
+.studio-item-prompt {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.studio-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--color-text-faint);
+}
+.studio-dot.done {
+  background: var(--color-fast);
+  border-color: var(--color-fast);
+}
+.studio-readonly {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-sm);
+  color: var(--color-warning);
+  font-size: 13px;
+}
+.studio-prompt-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.studio-prompt-text {
+  margin: 28px 0;
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+}
+.studio-prompt-text.live {
+  color: var(--color-slow);
+}
+.studio-meter {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--color-surface-alt);
+  overflow: hidden;
+}
+.studio-meter span {
+  display: block;
+  height: 100%;
+  background: var(--color-fast);
+  transition: width 60ms linear;
+}
+.studio-meter.clipped span {
+  background: var(--color-slow);
+}
+.studio-controls {
+  margin-top: 14px;
+}
+.studio-record-btn {
+  min-width: 220px;
+  justify-content: center;
+  font-weight: 600;
+  user-select: none;
+  touch-action: none;
+}
+.studio-record-btn.live {
+  background: var(--color-slow);
+  border-color: var(--color-slow);
+  color: #fff;
+}
+.studio-spacer {
+  flex: 1;
+}
+.studio-take {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+.studio-warning {
+  color: var(--color-warning);
+}
+kbd {
+  padding: 0 4px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.studio-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.studio-subhead {
+  margin-top: 16px;
+}
+.studio-composer {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px 12px;
+  margin-top: 8px;
+}
+.studio-composer-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.studio-report {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.studio-missing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.studio-chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-warning);
+  background: none;
+  color: var(--color-warning);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+.studio-now-playing {
+  margin: 12px 0 0;
+}
+.voice-pack-actions {
+  margin-top: 8px;
+}

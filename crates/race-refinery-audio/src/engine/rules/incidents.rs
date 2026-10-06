@@ -1,7 +1,8 @@
 ﻿use race_refinery_settings::AppSettings;
 
+use super::super::super::phrasing::push_incidents;
 use super::super::super::queue::SpeechPriority;
-use super::super::super::speech::{SpeechPlan, SpeechUnit};
+use super::super::super::speech::SpeechPlan;
 use super::super::candidate::{Candidate, Mark};
 use super::super::context::RaceContext;
 use super::super::helpers::wrap_with_radio;
@@ -44,16 +45,12 @@ impl Rule for IncidentsRule {
             return;
         }
         if ctx.snap.incident_count > self.last_incident_count {
-            let count = ctx.snap.incident_count;
-            let mut units = vec![
-                SpeechUnit::Clip("incident_intro".into()),
-                SpeechUnit::Tts(format!("{count}x")),
-            ];
-            if let Some(limit) = ctx.snap.incident_limit {
-                if limit > 0 && count >= limit.saturating_sub(2) {
-                    units.push(SpeechUnit::Tts(format!("Limit is {limit}.")));
-                }
-            }
+            let mut units = Vec::new();
+            push_incidents(
+                &mut units,
+                ctx.snap.incident_count.max(0) as u32,
+                ctx.snap.incident_limit.map(|l| l.max(0) as u32),
+            );
             out.push(Candidate {
                 priority: SpeechPriority::SAFETY,
                 plan: wrap_with_radio(settings, SpeechPlan::sequence(units)),

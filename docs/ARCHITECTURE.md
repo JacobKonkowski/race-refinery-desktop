@@ -6,7 +6,7 @@ dependency table and contributor playbook.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  React shell + feature registry (Analyze | Live)        │
+│  React shell + features (Analyze | Live | Voice Studio | Settings) │
 │  widgets catalog → monitor windows + VR HUD             │
 └─────────────┬───────────────────────────┬───────────────┘
               │ invoke / events           │
@@ -23,10 +23,12 @@ dependency table and contributor playbook.
 | Path | Role |
 |------|------|
 | `src/shell/` | AppShell, feature nav |
-| `src/features/registry.ts` | Analyze, Live |
+| `src/features/registry.ts` | Analyze, Live, Voice Studio, Settings |
 | `src/features/analyze/` | Post-session UI |
 | `src/features/live/` | Live / coach / monitor / VR controls |
-| `src/shared/` | api, types, format, toast, i18n |
+| `src/features/voice-studio/` | Record and preview coach voice packs |
+| `src/features/settings/` | VR placement, recenter bindings, audio coach and voice pack picker |
+| `src/shared/` | api, types, format, toast, i18n, navigation (`navigateToFeature`) |
 | `src/widgets/` | Shared presentational widgets |
 | `src/monitor/` | Monitor window entry (when present) |
 
@@ -36,7 +38,7 @@ dependency table and contributor playbook.
 2. **Monitor** — always-on-top Tauri windows per enabled widget  
 3. **Native VR** — ~30 Hz SHM for OpenXR layer  
 4. **Web HUD** — `:17342`  
-5. **Audio** — 250 ms rule engine poll  
+5. **Audio** — 250 ms rule engine poll; callouts play from the active voice pack ([AUDIO_COACH.md](AUDIO_COACH.md), [VOICE_PACKS.md](VOICE_PACKS.md))  
 
 ## Related
 

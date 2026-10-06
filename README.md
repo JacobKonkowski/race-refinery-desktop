@@ -40,7 +40,7 @@ Record telemetry in-car with **Alt+L**. Files land in `Documents\iRacing\telemet
 
 ## Features
 
-The UI is a feature shell with two surfaces: **Analyze** and **Live** (`src/features/registry.ts`).
+The UI is a feature shell with **Analyze**, **Live**, **Voice Studio**, and **Settings** (`src/features/registry.ts`).
 
 ### Analyze (post-session)
 
@@ -54,9 +54,15 @@ The UI is a feature shell with two surfaces: **Analyze** and **Live** (`src/feat
 
 - Real-time telemetry via `pitwall::Pitwall::connect()`
 - Live leaderboard, session deltas, coach message preview
-- **Audio coach** — WAV clips for fixed phrases + WinRT TTS for numbers. See [docs/AUDIO_COACH.md](docs/AUDIO_COACH.md)
+- **Audio coach** — every callout is a human recording from a voice pack (no TTS); lap times and gaps are composed from recorded number clips. See [docs/AUDIO_COACH.md](docs/AUDIO_COACH.md)
 - **In-headset HUD** — Race Refinery OpenXR API layer; web preview at `http://127.0.0.1:17342/vr`. See [docs/NATIVE_VR.md](docs/NATIVE_VR.md)
 - Demo clock for offline UI / SHM test pattern without a sim session
+
+### Voice Studio
+
+- Record your own coach voice: teleprompter, hold Space to record, automatic clean-up (trim, noise gate, loudness), undo
+- Preview composed callouts and play back every Spotter line before you drive
+- Share packs as a zip or a linked folder. See [docs/VOICE_PACKS.md](docs/VOICE_PACKS.md)
 
 ### Field awareness
 
@@ -76,7 +82,7 @@ Live gaps, pack state, and session best/optimal deltas while connected. See [doc
 
 - SQLite under `%LOCALAPPDATA%\race-refinery\` (schema **v2** — see [docs/DATA_MODEL.md](docs/DATA_MODEL.md))
 - Settings JSON beside the DB (audio + VR + overlay layout for VR slots)
-- Coach WAV clips: `src-tauri/resources/audio/coach/default/`
+- Coach voice packs: bundled pack in `src-tauri/resources/audio/coach/default/`, your packs under `%LOCALAPPDATA%\race-refinery\voice-packs\`
 
 ## Documentation
 

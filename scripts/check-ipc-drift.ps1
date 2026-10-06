@@ -2,15 +2,25 @@
 #
 # Prefer regenerating shared TypeScript types from Rust with specta/tauri-specta
 # as that lands. Until then, CI runs this drift smoke check: every #[tauri::command]
-# name in commands/mod.rs should appear in src/shared/api.ts.
+# name under src-tauri/src/commands/ should appear in src/shared/api.ts.
 
 $ErrorActionPreference = "Stop"
-$cmdFile = Join-Path $PSScriptRoot "..\src-tauri\src\commands\mod.rs"
+$cmdFiles = Get-ChildItem -Path (Join-Path $PSScriptRoot "..\src-tauri\src\commands") -Filter *.rs
 $apiFile = Join-Path $PSScriptRoot "..\src\shared\api.ts"
 
-$commands = Select-String -Path $cmdFile -Pattern 'pub (async )?fn ([a-z0-9_]+)\(' -AllMatches |
-  ForEach-Object { $_.Matches } | ForEach-Object { $_.Groups[2].Value } |
-  Where-Object { $_ -notmatch '^(new)$' } | Sort-Object -Unique
+$commands = foreach ($file in $cmdFiles) {
+  $lines = Get-Content $file.FullName
+  for ($i = 0; $i -lt $lines.Count; $i++) {
+    if ($lines[$i] -notmatch '#\[tauri::command\]') { continue }
+    for ($j = $i + 1; $j -lt [Math]::Min($i + 4, $lines.Count); $j++) {
+      if ($lines[$j] -match 'pub (async )?fn ([a-z0-9_]+)\s*[<(]') {
+        $Matches[2]
+        break
+      }
+    }
+  }
+}
+$commands = $commands | Sort-Object -Unique
 
 $api = Get-Content $apiFile -Raw
 $missing = @()
