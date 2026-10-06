@@ -162,7 +162,6 @@ pub fn radio_beep_samples() -> Vec<f32> {
 /// What a caller wants the sink to do while a plan plays.
 pub enum Playback {
     Play,
-    Pause,
     Stop,
 }
 
@@ -205,7 +204,9 @@ impl AudioPlayer {
         self.play_plan_with(plan, &mut || Playback::Play)
     }
 
-    /// Play `plan`, polling `control` so callers can pause or stop mid-callout.
+    /// Play `plan`, polling `control` so callers can stop mid-callout.
+    /// Preview pause is handled outside this loop: stop the current plan, release
+    /// the speak lock, then replay the same line when resume is pressed.
     pub fn play_plan_with(
         &self,
         plan: &SpeechPlan,
@@ -228,7 +229,6 @@ impl AudioPlayer {
         while !sink.empty() {
             match control() {
                 Playback::Play => sink.play(),
-                Playback::Pause => sink.pause(),
                 Playback::Stop => {
                     sink.stop();
                     break;

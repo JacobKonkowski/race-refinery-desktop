@@ -171,7 +171,7 @@ fn open_stream(
                 buf.push(s);
             }
         }
-        let _ = level.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |cur| {
+        let _ = level.try_update(Ordering::Relaxed, Ordering::Relaxed, |cur| {
             Some(f32::from_bits(cur).max(pk).to_bits())
         });
     };
