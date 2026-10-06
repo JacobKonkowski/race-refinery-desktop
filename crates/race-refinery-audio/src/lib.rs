@@ -1,92 +1,138 @@
-//! Path B audio coach: pre-baked WAV clips for fixed callouts, plus the bundled
-//! Piper neural voice (WinRT fallback) for dynamic numbers.
-mod clip_phrases;
+//! Audio coach: human-recorded voice packs stitched into callouts.
+//!
+//! - [`phrases`] — registry of every clip key, its prompt, and its Spotter / Engineer tier
+//! - [`pack`] — pack folders (`meta.json`, `manifest.json`, `{key}.wav`) and the active-pack resolver
+//! - [`pack_io`] — clone, zip import / export, WAV folder import
+//! - [`record`] — Voice Studio microphone capture and take saving (clean-up + undo)
+//! - [`preview`] — soundboard presets / composer and the Spotter QC playlist
+//! - `player` — clips + pauses with crossfades; missing clips are skipped with a warning
+//! - [`engine`] — race rules that decide what to say
+//!
+//! There is no speech synthesis: a callout whose clips are all missing stays silent.
 mod coach;
+mod dsp;
 pub mod engine;
-mod manifest;
+pub mod pack;
+pub mod pack_io;
+pub mod phrases;
 mod phrasing;
 mod player;
+pub mod preview;
 mod queue;
+pub mod record;
 mod session_mode;
 mod speech;
-pub mod tts_piper;
-pub mod tts_winrt;
 
-pub use clip_phrases::load_phrases_file;
 pub use engine::{RaceContext, RaceEngine, RuleSet, SessionMeta};
+pub use pack::{PackStatus, PackStore, VoicePack};
 pub use speech::SpeechPlan;
-pub use tts_piper::PIPER_VOICE_REL;
 
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use parking_lot::Mutex;
+use serde::Serialize;
 use tokio_util::sync::CancellationToken;
 
 use race_refinery_live::LiveService;
 use race_refinery_settings::{load_settings, AppSettings};
 
 use coach::CoachEngine;
-use manifest::ClipManifest;
+use pack::TierCount;
 use player::AudioPlayer;
+use preview::PreviewPlayer;
 use queue::SpeechQueue;
+use record::Recorder;
 use speech::SpeechUnit;
-use tts_piper::PiperTts;
 
-/// Coach clip folder relative to a resource root (`manifest.json` + `*.wav`).
+/// Bundled voice pack folder relative to a resource root.
 pub const COACH_CLIPS_REL: &str = "resources/audio/coach/default";
 
 pub struct AudioCoachService {
     cancel: Mutex<Option<CancellationToken>>,
     active: Mutex<bool>,
     last_message: Mutex<String>,
-    clips_dir: Mutex<Option<PathBuf>>,
-    voice_dir: Mutex<Option<PathBuf>>,
-    piper: Mutex<Option<Arc<PiperTts>>>,
+    bundled_dir: Mutex<Option<PathBuf>>,
+    user_root: PathBuf,
+    /// Held while any clip plays, so the coach and Voice Studio never overlap.
+    speak_lock: Arc<Mutex<()>>,
+    pub recorder: Recorder,
+    pub preview: PreviewPlayer,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioCoachStatus {
     pub active: bool,
     pub last_message: String,
-    /// The bundled Piper voice is installed, so the default voice is neural.
-    pub neural_voice: bool,
+    pub pack_id: String,
+    pub pack_name: String,
+    pub spotter: TierCount,
+    pub engineer: TierCount,
+}
+
+/// What a coach test or soundboard callout played.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayReport {
+    pub text: String,
+    /// Keys the pack has no clip for; they were skipped.
+    pub missing: Vec<String>,
 }
 
 impl AudioCoachService {
     pub fn new() -> Self {
+        Self::with_user_root(PackStore::default_user_root())
+    }
+
+    pub fn with_user_root(user_root: PathBuf) -> Self {
         Self {
             cancel: Mutex::new(None),
             active: Mutex::new(false),
             last_message: Mutex::new(String::new()),
-            clips_dir: Mutex::new(None),
-            voice_dir: Mutex::new(None),
-            piper: Mutex::new(None),
+            bundled_dir: Mutex::new(None),
+            user_root,
+            speak_lock: Arc::new(Mutex::new(())),
+            recorder: Recorder::new(),
+            preview: PreviewPlayer::new(),
         }
     }
 
-    /// Directory the host resolved for coach clips; tried before workspace fallbacks.
+    /// Bundled pack folder the host resolved; tried before workspace fallbacks.
     pub fn set_clips_dir(&self, dir: PathBuf) {
-        *self.clips_dir.lock() = Some(dir);
+        *self.bundled_dir.lock() = Some(dir);
     }
 
-    /// Directory the host resolved for the Piper voice; tried before workspace fallbacks.
-    pub fn set_voice_dir(&self, dir: PathBuf) {
-        *self.voice_dir.lock() = Some(dir);
+    /// Bundled pack plus user packs under the app data folder.
+    pub fn pack_store(&self) -> PackStore {
+        PackStore::new(bundled_pack_dir(self), self.user_root.clone())
+    }
+
+    /// The pack the coach speaks with right now.
+    pub fn active_pack(&self, settings: &AppSettings) -> VoicePack {
+        self.pack_store()
+            .resolve_or_bundled(&settings.audio_coach_pack_id)
+    }
+
+    pub fn speak_lock(&self) -> Arc<Mutex<()>> {
+        Arc::clone(&self.speak_lock)
     }
 
     pub fn is_active(&self) -> bool {
         self.cancel.lock().is_some()
     }
 
-    pub fn status(&self) -> AudioCoachStatus {
+    pub fn status(&self, settings: &AppSettings) -> AudioCoachStatus {
+        let pack = self.active_pack(settings).status();
         AudioCoachStatus {
             active: *self.active.lock(),
             last_message: self.last_message.lock().clone(),
-            neural_voice: piper_voice_dir(self).is_some(),
+            pack_id: pack.id,
+            pack_name: pack.name,
+            spotter: pack.spotter,
+            engineer: pack.engineer,
         }
     }
 
@@ -119,14 +165,23 @@ impl AudioCoachService {
         self.last_message.lock().clone()
     }
 
-    /// Speak a fixed test line without requiring live iRacing.
-    pub fn speak_test(self: &Arc<Self>) {
-        let service = Arc::clone(self);
-        thread::spawn(move || {
-            if let Err(e) = run_speak_test(service) {
-                tracing::warn!("Audio coach test failed: {e:#}");
-            }
-        });
+    /// Play a lap callout with the active pack, as on track. Blocks until done.
+    pub fn speak_test(&self) -> anyhow::Result<PlayReport> {
+        let settings = load_settings();
+        let mut units = Vec::new();
+        if settings.audio_radio_effects_enabled {
+            units.push(SpeechUnit::Clip(phrases::RADIO_BEEP_KEY.into()));
+        }
+        units.push(SpeechUnit::Clip("lap".into()));
+        phrasing::push_lap_time_callout(&mut units, 12, 89_452.0);
+        phrasing::push_delta(&mut units, -300.0);
+        let plan = SpeechPlan::sequence(units);
+        let player = AudioPlayer::new(self.active_pack(&settings), settings.audio_coach_volume)?;
+        let missing = play(&player, self, &plan)?;
+        Ok(PlayReport {
+            text: plan.display_text(),
+            missing,
+        })
     }
 }
 
@@ -143,105 +198,31 @@ fn workspace_resource_dir(rel: &str) -> PathBuf {
         .join(rel)
 }
 
-/// The clip set committed in the repo.
+/// The bundled pack committed in the repo.
 fn workspace_clips_dir() -> PathBuf {
     workspace_resource_dir(COACH_CLIPS_REL)
 }
 
-/// Resource directories in lookup order: host override, repo `src-tauri`, this
-/// crate, then beside the running executable.
-fn resource_dir_candidates(override_dir: Option<PathBuf>, rel: &str) -> Vec<PathBuf> {
+/// Bundled pack folders in lookup order: host override, repo `src-tauri`, then
+/// beside the running executable.
+fn clip_dir_candidates(override_dir: Option<PathBuf>) -> Vec<PathBuf> {
     let mut candidates: Vec<PathBuf> = override_dir.into_iter().collect();
-    candidates.push(workspace_resource_dir(rel));
-    candidates.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(rel));
+    candidates.push(workspace_clips_dir());
     if let Some(dir) = std::env::current_exe()
         .ok()
         .and_then(|exe| exe.parent().map(PathBuf::from))
     {
-        candidates.push(dir.join(rel));
+        candidates.push(dir.join(COACH_CLIPS_REL));
     }
     candidates
 }
 
-fn clip_dir_candidates(override_dir: Option<PathBuf>) -> Vec<PathBuf> {
-    resource_dir_candidates(override_dir, COACH_CLIPS_REL)
-}
-
-fn piper_voice_dir(service: &AudioCoachService) -> Option<PathBuf> {
-    let override_dir = service.voice_dir.lock().clone();
-    resource_dir_candidates(override_dir, PIPER_VOICE_REL)
-        .into_iter()
-        .find(|dir| PiperTts::is_voice_dir(dir))
-}
-
-/// Load the Piper voice once per process; `None` (WinRT fallback) when absent.
-fn piper_voice(service: &AudioCoachService) -> Option<Arc<PiperTts>> {
-    let mut cached = service.piper.lock();
-    if let Some(piper) = cached.as_ref() {
-        return Some(Arc::clone(piper));
-    }
-    let Some(dir) = piper_voice_dir(service) else {
-        tracing::warn!("Piper voice not installed; numbers use Windows speech");
-        return None;
-    };
-    let started = Instant::now();
-    match PiperTts::load(&dir) {
-        Ok(piper) => {
-            tracing::info!(
-                "Piper voice {} loaded in {} ms",
-                piper.model_name(),
-                started.elapsed().as_millis()
-            );
-            let piper = Arc::new(piper);
-            *cached = Some(Arc::clone(&piper));
-            Some(piper)
-        }
-        Err(e) => {
-            tracing::warn!("Piper voice failed to load, using Windows speech: {e:#}");
-            None
-        }
-    }
-}
-
-fn build_player(
-    service: &AudioCoachService,
-    settings: &AppSettings,
-) -> anyhow::Result<AudioPlayer> {
-    AudioPlayer::new(load_manifest(service), piper_voice(service), settings)
-}
-
-fn coach_clips_dir(service: &AudioCoachService) -> PathBuf {
-    let override_dir = service.clips_dir.lock().clone();
+fn bundled_pack_dir(service: &AudioCoachService) -> PathBuf {
+    let override_dir = service.bundled_dir.lock().clone();
     clip_dir_candidates(override_dir)
         .into_iter()
         .find(|dir| dir.join("manifest.json").is_file())
         .unwrap_or_else(workspace_clips_dir)
-}
-
-/// Load the clip manifest, falling back to an empty one so TTS lines still play.
-fn load_manifest(service: &AudioCoachService) -> ClipManifest {
-    let dir = coach_clips_dir(service);
-    ClipManifest::load(dir.clone()).unwrap_or_else(|e| {
-        tracing::warn!("Coach clips unavailable, continuing TTS-only: {e:#}");
-        ClipManifest::empty(dir)
-    })
-}
-
-/// Same voice, volume, and clip + number blend as an on-track lap callout.
-fn run_speak_test(service: Arc<AudioCoachService>) -> anyhow::Result<()> {
-    let settings = load_settings();
-    let player = build_player(&service, &settings)?;
-    let mut units = Vec::new();
-    if settings.audio_radio_effects_enabled {
-        units.push(SpeechUnit::Clip("radio_beep".into()));
-    }
-    units.extend([
-        SpeechUnit::Clip("intro_online".into()),
-        SpeechUnit::Clip("lap".into()),
-        SpeechUnit::Tts(phrasing::lap_time_tts(12, 89_452.0)),
-        SpeechUnit::Tts(phrasing::format_delta_tts(-300.0)),
-    ]);
-    play(&player, &service, &SpeechPlan::sequence(units), &settings)
 }
 
 fn run_audio_loop(
@@ -250,13 +231,12 @@ fn run_audio_loop(
     cancel: CancellationToken,
 ) -> anyhow::Result<()> {
     let settings = load_settings();
-    let mut player = build_player(&service, &settings)?;
+    let mut player = AudioPlayer::new(service.active_pack(&settings), settings.audio_coach_volume)?;
     let mut engine = CoachEngine::new();
     let mut queue = SpeechQueue::new(3);
 
     while !cancel.is_cancelled() {
         let settings = load_settings();
-        player.apply_settings(&settings);
 
         if let Some(meta) = live.session_meta.lock().clone() {
             engine.set_session_meta(meta);
@@ -271,7 +251,10 @@ fn run_audio_loop(
             if cancel.is_cancelled() {
                 break;
             }
-            play(&player, &service, &plan, &settings)?;
+            // Re-read the pack per callout so new recordings and pack switches apply live.
+            player.set_pack(service.active_pack(&settings));
+            player.set_volume(settings.audio_coach_volume);
+            play(&player, &service, &plan)?;
             if let Some(plan) = engine.poll(&snap, &settings) {
                 queue.push(plan.0, plan.1);
             }
@@ -289,11 +272,11 @@ fn play(
     player: &AudioPlayer,
     service: &AudioCoachService,
     plan: &SpeechPlan,
-    _settings: &AppSettings,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Vec<String>> {
     let line = plan.display_text();
     tracing::info!("Audio coach: {line}");
     *service.last_message.lock() = line;
+    let _speaking = service.speak_lock.lock();
     player.play_plan(plan)
 }
 
@@ -302,7 +285,7 @@ mod tests {
     use std::path::PathBuf;
 
     use super::speech::SpeechPlan;
-    use super::{clip_dir_candidates, coach_clips_dir, workspace_clips_dir, AudioCoachService};
+    use super::{bundled_pack_dir, clip_dir_candidates, workspace_clips_dir, AudioCoachService};
 
     #[test]
     fn display_text_sequence() {
@@ -311,14 +294,20 @@ mod tests {
     }
 
     #[test]
-    fn workspace_clips_dir_holds_manifest() {
-        assert!(workspace_clips_dir().join("manifest.json").is_file());
+    fn bundled_pack_records_every_phrase() {
+        let dir = workspace_clips_dir();
+        assert!(dir.join("manifest.json").is_file());
+        assert!(dir.join("meta.json").is_file());
+        let service = AudioCoachService::with_user_root(PathBuf::from("no-user-packs"));
+        let pack = service.pack_store().bundled().unwrap();
+        assert!(pack.read_only());
+        assert_eq!(pack.status().missing, Vec::<String>::new());
     }
 
     #[test]
     fn resolves_workspace_clips_without_override() {
         let service = AudioCoachService::new();
-        assert_eq!(coach_clips_dir(&service), workspace_clips_dir());
+        assert_eq!(bundled_pack_dir(&service), workspace_clips_dir());
     }
 
     #[test]
@@ -333,6 +322,6 @@ mod tests {
     fn missing_override_falls_through() {
         let service = AudioCoachService::new();
         service.set_clips_dir(PathBuf::from("does-not-exist"));
-        assert_eq!(coach_clips_dir(&service), workspace_clips_dir());
+        assert_eq!(bundled_pack_dir(&service), workspace_clips_dir());
     }
 }

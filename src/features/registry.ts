@@ -10,6 +10,7 @@ import type { ComponentType, ReactNode } from "react";
 import { analyzeFeature } from "./analyze";
 import { liveFeature } from "./live";
 import { settingsFeature } from "./settings";
+import { voiceStudioFeature } from "./voice-studio";
 
 export interface Feature {
   id: string;
@@ -21,4 +22,9 @@ export interface Feature {
   HeaderActions?: ComponentType;
 }
 
-export const features: Feature[] = [analyzeFeature, liveFeature, settingsFeature];
+export const features: Feature[] = [
+  analyzeFeature,
+  liveFeature,
+  voiceStudioFeature,
+  settingsFeature,
+];

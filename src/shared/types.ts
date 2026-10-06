@@ -451,7 +451,14 @@ export interface AppSettings {
   vrFieldPaceMode: string;
   overlayLayout: OverlayLayout;
   audioCoachEnabled: boolean;
-  audioCoachRate: number;
+  /** Active voice pack: `default` (bundled), a user pack id, or an absolute folder path. */
+  audioCoachPackId: string;
+  /** Folders linked as voice packs. */
+  audioCoachPackFolders: string[];
+  /** Voice Studio microphone name; empty = system default. */
+  audioCoachMicDevice: string;
+  /** Voice Studio jumps to the next missing phrase after each saved take. */
+  audioStudioAutoAdvance: boolean;
   audioCoachVolume: number;
   audioCoachFuelThreshold: number;
   audioPackAlertsEnabled: boolean;
@@ -464,7 +471,6 @@ export interface AppSettings {
   audioRaceClockEnabled: boolean;
   audioPitsOpenEnabled: boolean;
   audioCoachChatterLevel: "minimal" | "normal" | "verbose";
-  audioCoachVoice: string;
   audioSessionIntroEnabled: boolean;
   audioPositionCalloutsEnabled: boolean;
   audioTyreAlertsEnabled: boolean;
@@ -480,9 +486,114 @@ export interface AppSettings {
 export interface AudioCoachStatus {
   active: boolean;
   lastMessage: string;
-  /** Bundled Piper voice is installed, so the default voice is neural. */
-  neuralVoice: boolean;
+  /** Active voice pack reference and its completeness. */
+  packId: string;
+  packName: string;
+  spotter: TierCount;
+  engineer: TierCount;
 }
+
+/** Recorded vs total phrases in one completeness tier. */
+export interface TierCount {
+  recorded: number;
+  total: number;
+}
+
+export type PhraseTier = "spotter" | "engineer";
+
+/** A clip a voice pack can hold (`list_voice_phrases`). */
+export interface VoicePhrase {
+  key: string;
+  /** What the speaker says into the mic. */
+  prompt: string;
+  tier: PhraseTier;
+  category: string;
+}
+
+export interface VoicePackStatus {
+  /** Reference stored in `audioCoachPackId`. */
+  id: string;
+  name: string;
+  author: string;
+  kind: "bundled" | "user" | "folder";
+  readOnly: boolean;
+  dir: string;
+  spotter: TierCount;
+  engineer: TierCount;
+  /** Phrase keys without a clip, in registry order. */
+  missing: string[];
+  /** The pack overrides the built-in radio beep. */
+  customBeep: boolean;
+}
+
+export interface VoiceImportReport {
+  imported: string[];
+  overwritten: string[];
+  unknown: string[];
+  failed: string[];
+}
+
+export interface VoicePackImport {
+  pack: VoicePackStatus;
+  report: VoiceImportReport;
+}
+
+export interface InputDevice {
+  name: string;
+  isDefault: boolean;
+}
+
+export interface VoiceTakeResult {
+  key: string;
+  durationMs: number;
+  /** Raw input peak (0-1) before normalization. */
+  inputPeak: number;
+  warnings: string[];
+}
+
+/** What a coach test or soundboard callout played; `missing` clips were skipped. */
+export interface VoicePlayReport {
+  text: string;
+  missing: string[];
+}
+
+export interface VoicePreset {
+  id: string;
+  label: string;
+}
+
+/** Soundboard composer input; each set field adds its callout. */
+export interface VoiceComposition {
+  radioBeep?: boolean;
+  lap?: number;
+  lapTimeMs?: number;
+  sector?: number;
+  sectorTimeMs?: number;
+  deltaMs?: number;
+  position?: number;
+  gapAheadS?: number;
+  gapBehindS?: number;
+  fuelLiters?: number;
+  fuelLaps?: number;
+  incidents?: number;
+  incidentLimit?: number;
+  number?: number;
+}
+
+export interface VoicePlaylist {
+  keys: string[];
+  missing: string[];
+}
+
+export interface VoicePreviewStatus {
+  playing: boolean;
+  paused: boolean;
+  index: number;
+  total: number;
+  text: string;
+}
+
+export type VoicePreviewControl = "pause" | "resume" | "skip" | "stop";
 
 export interface MonitorOverlayStatus {
   active: boolean;
@@ -521,11 +632,4 @@ export interface VrLayerDiagnostics {
   iracingOpenXrVrMode: number | null;
   iracingOpenXrEnabled: boolean | null;
   issues: string[];
-}
-
-export interface TtsVoiceInfo {
-  displayName: string;
-  language: string;
-  gender: string;
-  neural: boolean;
 }

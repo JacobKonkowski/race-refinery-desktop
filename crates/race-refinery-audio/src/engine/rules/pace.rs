@@ -3,7 +3,8 @@ use std::collections::{HashMap, HashSet};
 use race_refinery_settings::AppSettings;
 
 use super::super::super::phrasing::{
-    format_delta_tts, format_gap_seconds, lap_time_tts, sector_time_tts,
+    push_delta, push_fuel_status, push_gap_seconds, push_lap_time_callout, push_position,
+    push_sector_time_callout, push_uint,
 };
 use super::super::super::queue::SpeechPriority;
 use super::super::super::speech::{SpeechPlan, SpeechUnit};
@@ -97,25 +98,19 @@ impl Rule for PaceRule {
                     self.best_lap_ms =
                         Some(self.best_lap_ms.map(|b| b.min(lap_ms)).unwrap_or(lap_ms));
                 } else if settings.audio_invalid_lap_enabled {
-                    self.pending_lap_plan = Some(wrap_with_radio(
-                        settings,
-                        SpeechPlan::sequence(vec![
-                            SpeechUnit::Clip("lap_invalid".into()),
-                            SpeechUnit::Clip("lap".into()),
-                            SpeechUnit::Tts(format!("{}.", lap_time_tts(completed_lap, lap_ms))),
-                        ]),
-                    ));
+                    let mut units = vec![
+                        SpeechUnit::Clip("lap_invalid".into()),
+                        SpeechUnit::Clip("lap".into()),
+                    ];
+                    push_lap_time_callout(&mut units, completed_lap, lap_ms);
+                    self.pending_lap_plan =
+                        Some(wrap_with_radio(settings, SpeechPlan::sequence(units)));
                 } else {
-                    self.pending_lap_plan = Some(wrap_with_radio(
-                        settings,
-                        SpeechPlan::sequence(vec![
-                            SpeechUnit::Clip("lap".into()),
-                            SpeechUnit::Tts(format!(
-                                "{}. Out lap.",
-                                lap_time_tts(completed_lap, lap_ms)
-                            )),
-                        ]),
-                    ));
+                    let mut units = vec![SpeechUnit::Clip("lap".into())];
+                    push_lap_time_callout(&mut units, completed_lap, lap_ms);
+                    units.push(SpeechUnit::Clip("out_lap".into()));
+                    self.pending_lap_plan =
+                        Some(wrap_with_radio(settings, SpeechPlan::sequence(units)));
                 }
                 self.fuel_at_lap_start = Some(snap.fuel_level);
             }
@@ -208,10 +203,8 @@ impl PaceRule {
         prev_best: Option<f64>,
         is_pb: bool,
     ) -> SpeechPlan {
-        let mut units = vec![
-            SpeechUnit::Clip("sector".into()),
-            SpeechUnit::Tts(sector_time_tts(sector_num, ms)),
-        ];
+        let mut units = vec![SpeechUnit::Clip("sector".into())];
+        push_sector_time_callout(&mut units, sector_num, ms);
 
         if is_pb && prev_best.is_some() {
             units.push(SpeechUnit::Clip("pb_sector".into()));
@@ -230,7 +223,7 @@ impl PaceRule {
             {
                 if d > 0.0 {
                     units.push(SpeechUnit::Clip("pace_off_pb_intro".into()));
-                    units.push(SpeechUnit::Tts(format_delta_tts(d)));
+                    push_delta(&mut units, d);
                 } else {
                     units.push(SpeechUnit::Clip("pace_on_pb".into()));
                 }
@@ -258,10 +251,8 @@ impl PaceRule {
         let prev_best = self.best_lap_ms;
         let is_pb = prev_best.map(|b| lap_ms < b - 50.0).unwrap_or(true);
 
-        let mut units = vec![
-            SpeechUnit::Clip("lap".into()),
-            SpeechUnit::Tts(lap_time_tts(lap_num, lap_ms)),
-        ];
+        let mut units = vec![SpeechUnit::Clip("lap".into())];
+        push_lap_time_callout(&mut units, lap_num, lap_ms);
 
         if is_pb && prev_best.is_some() {
             units.push(SpeechUnit::Clip("pb_new".into()));
@@ -271,7 +262,7 @@ impl PaceRule {
 
         if let Some(last) = ctx.snap.delta_to_last_ms {
             if last.abs() > 80.0 && prev_best.is_some() && !is_pb {
-                push_pace_delta_with_suffix(&mut units, last, "versus previous lap.");
+                push_pace_delta_with_suffix(&mut units, last, "versus_previous_lap");
             }
         }
 
@@ -279,7 +270,7 @@ impl PaceRule {
             || (ctx.session_mode.is_practice() && chatter_is_verbose(settings))
         {
             if let Some(d) = ctx.snap.delta_to_session_best_ms.filter(|d| d.abs() > 80.0) {
-                push_pace_delta_with_suffix(&mut units, d, "off session best.");
+                push_pace_delta_with_suffix(&mut units, d, "off_session_best");
             }
         }
 
@@ -296,12 +287,12 @@ impl PaceRule {
                             "position_down"
                         };
                         units.push(SpeechUnit::Clip(clip.into()));
-                        units.push(SpeechUnit::Tts(format!("P{pos}")));
+                        push_uint(&mut units, pos as u32);
                     } else if pos > 0 {
-                        units.push(SpeechUnit::Tts(format!("P{pos}")));
+                        push_position(&mut units, pos);
                     }
                 } else if pos > 0 {
-                    units.push(SpeechUnit::Tts(format!("P{pos}")));
+                    push_position(&mut units, pos);
                 }
             }
         }
@@ -313,11 +304,11 @@ impl PaceRule {
         {
             if let Some(g) = ctx.snap.gap_to_car_ahead_s.filter(|g| *g >= 0.0) {
                 units.push(SpeechUnit::Clip("gap_ahead".into()));
-                units.push(SpeechUnit::Tts(format_gap_seconds(g)));
+                push_gap_seconds(&mut units, g);
             }
             if let Some(g) = ctx.snap.gap_to_car_behind_s.filter(|g| *g >= 0.0) {
                 units.push(SpeechUnit::Clip("gap_behind".into()));
-                units.push(SpeechUnit::Tts(format_gap_seconds(g)));
+                push_gap_seconds(&mut units, g);
             }
         }
 
@@ -325,27 +316,8 @@ impl PaceRule {
             && settings.audio_strategy_enabled
             && ctx.snap.fuel_level > 0.0
         {
-            if let Some(laps_left) = estimate_laps_remaining(ctx.snap.fuel_level, ctx.fuel_per_lap)
-            {
-                if laps_left <= 3.0 {
-                    units.push(SpeechUnit::Tts(format!(
-                        "Fuel {:.0} liters. Pit in {:.0} laps.",
-                        ctx.snap.fuel_level,
-                        laps_left.ceil()
-                    )));
-                } else {
-                    units.push(SpeechUnit::Tts(format!(
-                        "Fuel {:.0} liters. About {:.0} laps remaining.",
-                        ctx.snap.fuel_level,
-                        laps_left.round()
-                    )));
-                }
-            } else {
-                units.push(SpeechUnit::Tts(format!(
-                    "Fuel {:.0} liters.",
-                    ctx.snap.fuel_level
-                )));
-            }
+            let laps_left = estimate_laps_remaining(ctx.snap.fuel_level, ctx.fuel_per_lap);
+            push_fuel_status(&mut units, ctx.snap.fuel_level, laps_left);
         }
 
         SpeechPlan::sequence(units)

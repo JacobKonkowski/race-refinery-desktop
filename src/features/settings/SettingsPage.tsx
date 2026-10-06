@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   captureControllerButton,
-  getAudioCoachStatus,
   getSettings,
-  listTtsVoices,
   recenterVr,
   saveSettings,
   testAudioCoach,
@@ -11,7 +9,9 @@ import {
 import { Slider } from "../../shared/Slider";
 import { showToast } from "../../shared/toast";
 import { defaultOverlayLayout } from "../../shared/types";
-import type { AppSettings, TtsVoiceInfo, WidgetPlacement } from "../../shared/types";
+import type { AppSettings, WidgetPlacement } from "../../shared/types";
+import { coachTestMessage } from "../../shared/voicePacks";
+import { VoicePackSection } from "./VoicePackSection";
 
 /** Index = VR overlay slot (see `OverlayLayout::widgets`). */
 const WIDGET_NAMES = ["Coach", "Standings", "Relative", "Radar", "Track map"];
@@ -76,8 +76,6 @@ export function SettingsPage() {
   const [widgetIndex, setWidgetIndex] = useState(0);
   const [capturingKey, setCapturingKey] = useState(false);
   const [capturingButton, setCapturingButton] = useState(false);
-  const [voices, setVoices] = useState<TtsVoiceInfo[]>([]);
-  const [neuralVoice, setNeuralVoice] = useState(true);
   const settingsRef = useRef<AppSettings | null>(null);
   const saveTimer = useRef<number | null>(null);
 
@@ -88,12 +86,6 @@ export function SettingsPage() {
         setSettings(s);
       })
       .catch((e) => showToast(`Could not load settings: ${String(e)}`, "error"));
-    listTtsVoices()
-      .then(setVoices)
-      .catch(() => setVoices([]));
-    getAudioCoachStatus()
-      .then((s) => setNeuralVoice(s.neuralVoice))
-      .catch(() => undefined);
     return () => {
       if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
     };
@@ -114,15 +106,20 @@ export function SettingsPage() {
     }, 150);
   };
 
-  /** The test reads settings from disk, so land any pending edit (e.g. a new voice) first. */
+  /** Write a pending edit now instead of waiting for the debounce. */
+  const flushSave = useCallback(async () => {
+    if (saveTimer.current === null) return;
+    window.clearTimeout(saveTimer.current);
+    saveTimer.current = null;
+    if (settingsRef.current) await saveSettings(settingsRef.current);
+  }, []);
+
+  /** The test reads settings from disk, so land any pending edit (e.g. a new pack) first. */
   const testCoach = async () => {
-    if (saveTimer.current !== null) {
-      window.clearTimeout(saveTimer.current);
-      saveTimer.current = null;
-    }
     try {
-      if (settingsRef.current) await saveSettings(settingsRef.current);
-      await testAudioCoach();
+      await flushSave();
+      const message = coachTestMessage(await testAudioCoach());
+      if (message) showToast(message);
     } catch (e) {
       showToast(`Coach test failed: ${String(e)}`, "error");
     }
@@ -208,9 +205,6 @@ export function SettingsPage() {
   const world = widget.vrLock === "world";
   const button = settings.vrRecenterButton;
   const native = settings.vrMode !== "web";
-  const savedVoiceMissing =
-    settings.audioCoachVoice !== "" &&
-    !voices.some((v) => v.displayName === settings.audioCoachVoice);
 
   return (
     <div className="settings-page">
@@ -474,57 +468,15 @@ export function SettingsPage() {
             <span>Enable the audio coach</span>
           </label>
 
-          <div className="settings-section">
-            <div className="settings-field">
-              <span className="muted small settings-inline-label">Voice</span>
-              <select
-                aria-label="Coach voice"
-                value={settings.audioCoachVoice}
-                onChange={(e) => update({ audioCoachVoice: e.target.value })}
-              >
-                <option value="">
-                  {neuralVoice ? "Race Refinery voice (neural)" : "Race Refinery voice (not installed)"}
-                </option>
-                {savedVoiceMissing ? (
-                  <option value={settings.audioCoachVoice}>
-                    {settings.audioCoachVoice} (not installed)
-                  </option>
-                ) : null}
-                {voices.length > 0 ? (
-                  <optgroup label="Windows voices (numbers only)">
-                    {voices.map((v) => (
-                      <option key={v.displayName} value={v.displayName}>
-                        {v.displayName} ({v.language}
-                        {v.neural ? ", neural" : ""})
-                      </option>
-                    ))}
-                  </optgroup>
-                ) : null}
-              </select>
-              <button type="button" className="btn" onClick={() => void testCoach()}>
-                Test
-              </button>
-            </div>
-            <p className="muted small">
-              Callouts are recorded in the Race Refinery voice, and live numbers (lap times, gaps,
-              deltas) are spoken in the same voice on your PC. A Windows voice only changes the
-              numbers and sounds more robotic.
-              {neuralVoice
-                ? ""
-                : " The Race Refinery voice files are missing from this install, so numbers use Windows speech."}
-            </p>
-          </div>
+          <VoicePackSection
+            packId={settings.audioCoachPackId}
+            flushSave={flushSave}
+            onSettings={apply}
+            onSelect={(id) => update({ audioCoachPackId: id })}
+            onTest={() => void testCoach()}
+          />
 
           <div className="vr-sliders">
-            <Slider
-              label="Speed"
-              value={settings.audioCoachRate}
-              min={0.5}
-              max={2}
-              step={0.05}
-              format={(v) => `${v.toFixed(2)}×`}
-              onChange={(v) => update({ audioCoachRate: v })}
-            />
             <Slider
               label="Volume"
               value={settings.audioCoachVolume}

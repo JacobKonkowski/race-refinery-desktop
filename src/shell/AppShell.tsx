@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Feature } from "../features/registry";
 import { getImportStatus, onImportStatus } from "../shared/api";
+import { onNavigateToFeature } from "../shared/navigation";
 import { ToastHost } from "../shared/ToastHost";
 import type { ImportStatus } from "../shared/types";
 import { FeatureNav } from "./FeatureNav";
@@ -20,6 +21,8 @@ export function AppShell({ features }: Props) {
     () => features.find((f) => f.id === activeId) ?? features[0],
     [features, activeId],
   );
+
+  useEffect(() => onNavigateToFeature(setActiveId), []);
 
   if (!active) return null;
   const HeaderActions = active.HeaderActions;

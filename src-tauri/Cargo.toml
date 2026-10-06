@@ -14,10 +14,6 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
-[[bin]]
-name = "gen-audio-clips"
-path = "src/bin/gen_audio_clips.rs"
-
 [features]
 default = ["vr"]
 # OpenXR layer packaging / native HUD paths. Disable for lighter contributor builds.
@@ -35,11 +31,9 @@ tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
-clap = { version = "4", features = ["derive"] }
 parking_lot = "0.12"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-hound = "3.5"
 
 race-refinery-telemetry = { path = "../crates/race-refinery-telemetry" }
 race-refinery-analysis = { path = "../crates/race-refinery-analysis" }
@@ -58,8 +52,4 @@ windows = { version = "0.58", features = [
     "Win32_System_Memory",
     "Win32_System_Registry",
     "Win32_Security",
-    "Foundation",
-    "Foundation_Collections",
-    "Media_SpeechSynthesis",
-    "Storage_Streams",
 ] }

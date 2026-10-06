@@ -32,6 +32,7 @@ import {
 } from "../../shared/api";
 import { formatDelta, formatLapTime, formatLiters, formatTemp } from "../../shared/format";
 import { Slider } from "../../shared/Slider";
+import { TierBadges } from "../../shared/TierBadges";
 import { showToast } from "../../shared/toast";
 import type {
   AppSettings,
@@ -45,6 +46,7 @@ import type {
   WidgetPlacement,
 } from "../../shared/types";
 import { useLapTrail } from "../../shared/useLapTrail";
+import { coachTestMessage } from "../../shared/voicePacks";
 import { useTrackMap } from "../../shared/useTrackMap";
 import { CoachWidget, TrackMapWidget } from "../../widgets";
 import { SessionLeaderboard } from "./SessionLeaderboard";
@@ -384,7 +386,12 @@ export function LivePage() {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={() => run("Test coach", testAudioCoach)}
+                  onClick={() =>
+                    run("Test coach", async () => {
+                      const message = coachTestMessage(await testAudioCoach());
+                      if (message) showToast(message);
+                    })
+                  }
                 >
                   Test Coach
                 </button>
@@ -401,6 +408,12 @@ export function LivePage() {
                   {audioStatus?.active ? "Stop coach" : "Start coach"}
                 </button>
               </div>
+              {audioStatus ? (
+                <div className="btn-row">
+                  <span className="muted small">Voice: {audioStatus.packName}</span>
+                  <TierBadges spotter={audioStatus.spotter} engineer={audioStatus.engineer} />
+                </div>
+              ) : null}
               {audioStatus?.lastMessage ? (
                 <p className="audio-coach-last muted small">
                   <strong>Last spoken:</strong> {audioStatus.lastMessage}

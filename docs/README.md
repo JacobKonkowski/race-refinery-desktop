@@ -24,7 +24,8 @@ Race Refinery helps you get faster in iRacing: **Analyze** your IBT telemetry af
 
 | Doc | Contents |
 |-----|----------|
-| [AUDIO_COACH.md](AUDIO_COACH.md) | WAV clips + TTS, priorities, clip export |
+| [AUDIO_COACH.md](AUDIO_COACH.md) | Callout rules, priorities, composing numbers from clips |
+| [VOICE_PACKS.md](VOICE_PACKS.md) | Recording voice packs in Voice Studio, pack format, sharing |
 | [NATIVE_VR.md](NATIVE_VR.md) | OpenXR layer, shared memory, install |
 | [LIVE_TELEMETRY.md](LIVE_TELEMETRY.md) | Live service, demo clock, auto-import |
 | [COMPARISON.md](COMPARISON.md) | Live field awareness (leaderboard, gaps, pack) |
@@ -40,7 +41,8 @@ Race Refinery helps you get faster in iRacing: **Analyze** your IBT telemetry af
 
 ## Keep in sync when changing code
 
-- Commands → `src-tauri/src/commands/mod.rs`, `src/shared/api.ts`, [API.md](API.md)
+- Commands → `src-tauri/src/commands/*.rs`, `src/shared/api.ts`, [API.md](API.md)
+- Coach phrases → `crates/race-refinery-audio/src/phrases.txt`, [AUDIO_COACH.md](AUDIO_COACH.md), [VOICE_PACKS.md](VOICE_PACKS.md)
 - Types → `src/shared/types.ts`, [DATA_MODEL.md](DATA_MODEL.md)
 - Live UI → `src/features/live/LivePage.tsx`
 - Analyze UI → `src/features/analyze/*`
@@ -48,4 +50,4 @@ Race Refinery helps you get faster in iRacing: **Analyze** your IBT telemetry af
 - Feature list → `src/features/registry.ts`
 - Crate map → [FOUNDATION.md](FOUNDATION.md)
 
-Last updated: September 2026.
+Last updated: October 2026.

@@ -28,7 +28,6 @@
     "targets": "all",
     "resources": [
       "resources/audio/coach/default/**/*",
-      "resources/audio/coach/piper/**/*",
       "resources/openxr-layer/**/*"
     ],
     "icon": [

@@ -37,19 +37,13 @@ impl Rule for IntroRule {
         {
             return;
         }
-        let session = if ctx.snap.session_type.is_empty() {
-            SpeechUnit::Clip("intro_good_luck".into())
-        } else {
-            SpeechUnit::Tts(format!("{}. Good luck.", ctx.snap.session_type))
-        };
         out.push(Candidate {
             priority: SpeechPriority::CRITICAL,
             plan: wrap_with_radio(
                 settings,
                 SpeechPlan::sequence(vec![
                     SpeechUnit::Clip("intro_online".into()),
-                    SpeechUnit::Tts(ctx.snap.track.clone()),
-                    session,
+                    SpeechUnit::Clip("intro_good_luck".into()),
                 ]),
             ),
             mark: Mark::Intro,

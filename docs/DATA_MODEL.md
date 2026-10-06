@@ -64,7 +64,8 @@ JSON beside the DB (`settings/mod.rs` → `AppSettings`). Includes:
 
 - `vrMode` (`native` \| `web`), HUD offset/opacity, recenter bindings (`vrRecenterHotkey` accelerator string, `vrRecenterButton` `{deviceGuid, deviceName, button}` or null)
 - `overlayLayout` — five widget slots (monitor + VR) + field pace mode; layouts saved by older builds are padded to the current slot count on load. Each slot's VR fields: `vrLock` (`world` \| `head`), `vrOffsetX/Y/Z`, `vrTiltDeg`, `vrScale`, `vrOpacity`; missing fields load as world-locked with zero offsets
-- Audio coach rate/volume/voice, chatter level, category toggles, gaps
+- Audio coach volume, chatter level, category toggles, gaps
+- Voice packs: `audioCoachPackId` (`default`, a user pack id, or an absolute folder path), `audioCoachPackFolders` (linked folder packs), `audioCoachMicDevice` (Voice Studio mic; empty = system default), `audioStudioAutoAdvance`. The retired `audioCoachVoice` and `audioCoachRate` keys from older builds are ignored on load and dropped on the next save; there is no TTS voice to migrate
 
 Shared `enabled` flags; `desktop*` places monitor windows, `vr*` places the in-headset HUD (enable once, place twice).
 

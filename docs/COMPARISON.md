@@ -46,8 +46,8 @@ compact pack indicator.
 
 ## Audio coach
 
-**WAV clips** for fixed phrases, **WinRT TTS** for dynamic lap times, gaps, and positions.
-Full pipeline, priority order, session modes, and clip export: **[AUDIO_COACH.md](AUDIO_COACH.md)**.
+Every callout is a **human recording** from the active voice pack: fixed phrases are one clip, and lap times, gaps, and positions are composed from recorded number clips.
+Full pipeline, priority order, and session modes: **[AUDIO_COACH.md](AUDIO_COACH.md)**; recording and sharing packs: **[VOICE_PACKS.md](VOICE_PACKS.md)**.
 
 The coach ([`audio/engine`](../src-tauri/src/audio/engine/)) speaks at most one alert per 250 ms tick. Lower-priority alerts wait for the next tick rather than being dropped.
 

@@ -12,16 +12,18 @@
 src/
   shell/           AppShell, FeatureNav
   features/
-    registry.ts    Feature[] — Analyze + Live
+    registry.ts    Feature[] — Analyze, Live, Voice Studio, Settings
     analyze/       AnalyzePage, browser, laps, compare, insights, fuel…
     live/          LivePage, SessionLeaderboard
+    voice-studio/  VoiceStudioPage, RecordTab, PreviewTab
+    settings/      SettingsPage, VoicePackSection
   monitor/         Transparent overlay window entry
-  shared/          api.ts, types.ts, format, toast
+  shared/          api.ts, types.ts, format, toast, navigation, TierBadges
   widgets/         Coach, Standings, Relative, Radar + widgets.css
   styles/          tokens.css, app.css
 ```
 
-Adding a surface: create `features/<id>/`, export a `Feature`, append to `registry.ts`. Nav appears automatically when more than one feature is registered.
+Adding a surface: create `features/<id>/`, export a `Feature`, append to `registry.ts`. Nav appears automatically when more than one feature is registered. To jump to another surface from a page (for example Settings → Voice Studio), call `navigateToFeature(id)` from `shared/navigation.ts`.
 
 ## IPC
 

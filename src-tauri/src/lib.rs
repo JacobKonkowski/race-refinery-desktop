@@ -48,9 +48,6 @@ pub fn run() {
             if let Some(dir) = commands::coach_clips_dir(app.handle()) {
                 state.audio.set_clips_dir(dir);
             }
-            if let Some(dir) = commands::coach_voice_dir(app.handle()) {
-                state.audio.set_voice_dir(dir);
-            }
             start_watcher(app.handle().clone(), state.import.clone());
             recenter::init(app.handle(), &state);
             Ok(())
@@ -79,12 +76,37 @@ pub fn run() {
             commands::get_settings,
             commands::save_settings_cmd,
             commands::patch_settings_cmd,
-            commands::list_tts_voices_cmd,
             commands::start_audio_coach,
             commands::stop_audio_coach,
             commands::get_audio_coach_status,
             commands::get_audio_coach_message,
             commands::test_audio_coach,
+            commands::voice::list_voice_phrases,
+            commands::voice::list_voice_packs,
+            commands::voice::get_voice_pack_status,
+            commands::voice::create_voice_pack,
+            commands::voice::clone_voice_pack,
+            commands::voice::delete_voice_pack,
+            commands::voice::set_active_voice_pack,
+            commands::voice::import_voice_pack_zip,
+            commands::voice::export_voice_pack_zip,
+            commands::voice::link_voice_pack_folder,
+            commands::voice::unlink_voice_pack_folder,
+            commands::voice::import_voice_pack_wavs,
+            commands::voice::list_input_devices,
+            commands::voice::start_voice_capture,
+            commands::voice::get_voice_capture_level,
+            commands::voice::cancel_voice_capture,
+            commands::voice::finish_voice_take,
+            commands::voice::undo_voice_take,
+            commands::voice::delete_voice_clip,
+            commands::voice::list_voice_presets,
+            commands::voice::play_voice_clip,
+            commands::voice::play_voice_preset,
+            commands::voice::play_voice_composition,
+            commands::voice::play_spotter_playlist,
+            commands::voice::get_voice_preview_status,
+            commands::voice::control_voice_preview,
             commands::start_monitor_overlay,
             commands::stop_monitor_overlay,
             commands::get_monitor_overlay_status,

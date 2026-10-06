@@ -1,5 +1,6 @@
 use race_refinery_settings::AppSettings;
 
+use super::super::super::phrasing::{push_laps_of_fuel, push_laps_short, push_liters};
 use super::super::super::queue::SpeechPriority;
 use super::super::super::speech::{SpeechPlan, SpeechUnit};
 use super::super::candidate::{Candidate, Mark};
@@ -113,20 +114,13 @@ impl FuelRule {
         };
 
         if laps_of_fuel + margin < laps_remain as f32 && !self.spoke_pit_to_finish {
-            let short_by = (laps_remain as f32 - laps_of_fuel).ceil() as i32;
+            let short_by = (laps_remain as f32 - laps_of_fuel).ceil().max(1.0) as u32;
+            let mut units = vec![SpeechUnit::Clip("fuel_short_on_fuel".into())];
+            push_laps_short(&mut units, short_by);
+            units.push(SpeechUnit::Clip("fuel_plan_stop".into()));
             out.push(Candidate {
                 priority: SpeechPriority::RACE,
-                plan: wrap_with_radio(
-                    settings,
-                    SpeechPlan::sequence(vec![
-                        SpeechUnit::Clip("fuel_short_on_fuel".into()),
-                        SpeechUnit::Tts(format!(
-                            "About {short_by} lap{} short.",
-                            if short_by == 1 { "" } else { "s" }
-                        )),
-                        SpeechUnit::Clip("fuel_plan_stop".into()),
-                    ]),
-                ),
+                plan: wrap_with_radio(settings, SpeechPlan::sequence(units)),
                 mark: Mark::PitToFinish,
             });
         } else if laps_of_fuel >= laps_remain as f32 + 1.0
@@ -163,19 +157,10 @@ impl FuelRule {
         {
             return;
         }
-        let mut units = vec![
-            SpeechUnit::Clip("fuel_low".into()),
-            SpeechUnit::Tts(format!("{:.0} liters", ctx.snap.fuel_level)),
-        ];
+        let mut units = vec![SpeechUnit::Clip("fuel_low".into())];
+        push_liters(&mut units, ctx.snap.fuel_level);
         if let Some(laps_left) = estimate_laps_remaining(ctx.snap.fuel_level, &self.fuel_per_lap) {
-            if laps_left <= 1.5 {
-                units.push(SpeechUnit::Clip("fuel_pit_this_lap".into()));
-            } else {
-                units.push(SpeechUnit::Tts(format!(
-                    "About {:.0} laps of fuel.",
-                    laps_left.round()
-                )));
-            }
+            push_laps_of_fuel(&mut units, laps_left);
         }
         out.push(Candidate {
             priority: SpeechPriority::RACE,

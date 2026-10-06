@@ -23,15 +23,14 @@
 
 | Symptom | Check |
 |---------|--------|
-| Test Coach works, live silent | Missing WAVs under `src-tauri/resources/audio/coach/default/` — regenerate clips. Look for `Coach clips unavailable, continuing TTS-only` in the log |
-| Numbers sound robotic | Settings voice should be "Race Refinery voice (neural)". If it says "not installed", run `scripts/fetch-piper-voice.ps1` (dev) or reinstall; the log shows `Piper voice not installed` |
-| No Test Coach either | Audio output device; coach volume above 0 in settings; for a Windows voice, WinRT voices installed |
+| Coach is silent | The active voice pack has no clips. Pick the bundled pack (or a recorded one) in Settings → Audio coach and run Test |
+| Some callouts never play | Callouts with missing clips are skipped. Check the Spotter / Engineer badges in Settings or Live; Test Coach and Voice Studio Preview list the missing keys. The log shows `voice pack '…' has no clip for <key>` once per key |
+| Lap times / gaps silent, flags fine | Only the Spotter tier is recorded. Record the Engineer tier (numbers and glue words) |
+| Wrong pack plays | The selected pack was moved or deleted, so the coach fell back to the bundled pack; the log shows `voice pack '…' unavailable` |
+| No Test Coach either | Audio output device; coach volume above 0 in settings |
+| Recording fails or is silent | Pick the right mic in Voice Studio and use Check level; Windows privacy settings must allow desktop apps to use the microphone |
+| Takes sound clipped or quiet | Follow the take warning: lower or raise the mic gain, then re-record (Undo restores the previous take) |
 | Pack / clear wrong | Pack uses `CarLeftRight` enum; confirm on-track / not pit-road suppression |
-| Clip key missing | Phrase in `scripts/audio-phrases.txt` + regenerate; player skips missing files |
-
-```powershell
-.\scripts\generate-audio-clips.ps1 -Only <key>
-```
 
 ## Native VR
 

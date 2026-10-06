@@ -116,9 +116,6 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      - name: Fetch Piper coach voice
-        run: powershell -ExecutionPolicy Bypass -File scripts/fetch-piper-voice.ps1
-
       - name: Build Tauri app
         run: npm run tauri build
 
