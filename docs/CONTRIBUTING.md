@@ -34,7 +34,7 @@ OpenXR layer build: [NATIVE_VR.md](NATIVE_VR.md) and [openxr-layer/README.md](..
 | IPC / state | `src-tauri/src/commands/mod.rs` |
 | Live telemetry | `src-tauri/src/live/` |
 | Audio coach + voice packs | `crates/race-refinery-audio/`, `src-tauri/src/commands/voice.rs` |
-| Settings | `src-tauri/src/settings/` |
+| Settings | `crates/race-refinery-settings/` |
 | IBT analysis | `src-tauri/src/analysis/`, `ingest/`, `storage/` |
 | VR | `src-tauri/src/vr/`, `openxr-layer/` |
 | Frontend shell | `src/shell/`, `src/features/registry.ts` |
@@ -50,7 +50,7 @@ Start with [ARCHITECTURE.md](ARCHITECTURE.md) for the system map.
 
 ## Conventions
 
-- Rust modules by domain; `#[tauri::command]` handlers in `commands/mod.rs`
+- Rust modules by domain; `#[tauri::command]` handlers in `src-tauri/src/commands/*.rs`
 - IPC JSON uses **camelCase** (`serde(rename_all = "camelCase")`)
 - TypeScript types in `src/shared/types.ts` mirror Rust structs
 - Prefer `cargo test --manifest-path src-tauri/Cargo.toml --lib` for unit tests
@@ -68,9 +68,11 @@ The coach speaks only human recordings; there is no clip generator. Phrase keys 
 
 [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) on PRs to `main`:
 
-- `npm ci` → `npm run build`
-- `cargo test`
-- `npm run docs:api` (smoke — ensures rustdoc + TypeDoc config valid)
+- IPC drift check (`scripts/check-ipc-drift.ps1`)
+- `npm test` → `npm run build`
+- `cargo fmt --check`, `clippy -D warnings`, `cargo test --workspace --lib`
+- `cargo deny check licenses bans sources`
+- `npm run docs:api` (smoke — rustdoc + TypeDoc)
 
 ---
 

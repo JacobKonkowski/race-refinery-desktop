@@ -55,14 +55,14 @@ The UI is a feature shell with **Analyze**, **Live**, **Voice Studio**, and **Se
 - Real-time telemetry via `pitwall::Pitwall::connect()`
 - Live leaderboard, session deltas, coach message preview
 - **Audio coach** — every callout is a human recording from a voice pack (no TTS); lap times and gaps are composed from recorded number clips. See [docs/AUDIO_COACH.md](docs/AUDIO_COACH.md)
+- **In-headset HUD** — Race Refinery OpenXR API layer; web preview at `http://127.0.0.1:17342/vr`. See [docs/NATIVE_VR.md](docs/NATIVE_VR.md)
+- Demo clock for offline UI / SHM test pattern without a sim session
 
 ### Voice Studio
 
 - Record your own coach voice: teleprompter, hold Space to record, automatic clean-up (trim, noise gate, loudness), undo
 - Preview composed callouts and play back every Spotter line before you drive
 - Share packs as a zip or a linked folder. See [docs/VOICE_PACKS.md](docs/VOICE_PACKS.md)
-- **In-headset HUD** — Race Refinery OpenXR API layer; web preview at `http://127.0.0.1:17342/vr`. See [docs/NATIVE_VR.md](docs/NATIVE_VR.md)
-- Demo clock for offline UI / SHM test pattern without a sim session
 
 ### Field awareness
 

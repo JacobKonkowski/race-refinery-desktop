@@ -4,6 +4,7 @@ import {
   getSettings,
   recenterVr,
   saveSettings,
+  setActiveVoicePack,
   testAudioCoach,
 } from "../../shared/api";
 import { Slider } from "../../shared/Slider";
@@ -472,7 +473,16 @@ export function SettingsPage() {
             packId={settings.audioCoachPackId}
             flushSave={flushSave}
             onSettings={apply}
-            onSelect={(id) => update({ audioCoachPackId: id })}
+            onSelect={(id) => {
+              void (async () => {
+                try {
+                  await flushSave();
+                  apply(await setActiveVoicePack(id));
+                } catch (e) {
+                  showToast(String(e), "error");
+                }
+              })();
+            }}
             onTest={() => void testCoach()}
           />
 

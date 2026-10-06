@@ -1,6 +1,6 @@
 # Features
 
-Race Refinery exposes features via `src/features/registry.ts`: **Analyze**, **Live**, and **Settings**.
+Race Refinery exposes features via `src/features/registry.ts`: **Analyze**, **Live**, **Voice Studio**, and **Settings**.
 
 ## Analyze
 

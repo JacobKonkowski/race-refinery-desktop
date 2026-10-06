@@ -49,7 +49,7 @@ compact pack indicator.
 Every callout is a **human recording** from the active voice pack: fixed phrases are one clip, and lap times, gaps, and positions are composed from recorded number clips.
 Full pipeline, priority order, and session modes: **[AUDIO_COACH.md](AUDIO_COACH.md)**; recording and sharing packs: **[VOICE_PACKS.md](VOICE_PACKS.md)**.
 
-The coach ([`audio/engine`](../src-tauri/src/audio/engine/)) speaks at most one alert per 250 ms tick. Lower-priority alerts wait for the next tick rather than being dropped.
+The coach ([`engine/`](../crates/race-refinery-audio/src/engine/)) speaks at most one alert per 250 ms tick. Lower-priority alerts wait for the next tick rather than being dropped.
 
 | Priority | Category | Examples |
 |----------|----------|----------|
@@ -68,7 +68,7 @@ Pack, race, pace, gap, and strategy alerts are suppressed on pit road or off tra
 computed as the absolute difference in F2 time between adjacent cars in the overall
 order, and the blue flag is read from the player's `SessionFlags` bitfield. Both should
 be sanity-checked against a live or replay session; if iRacing reports them differently
-than assumed, adjust the resolver in `competitors.rs` / `audio/engine` without changing
+than assumed, adjust the resolver in `competitors.rs` / `crates/race-refinery-audio/src/engine` without changing
 the surrounding feature.
 
 ## Multi-class notes

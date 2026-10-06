@@ -25,7 +25,8 @@ When logging is enabled (`RUST_LOG=…`), messages may include:
 
 - File paths under your iRacing telemetry folder
 - Track/car names and session identifiers from the sim
-- Error strings from import, live connect, or VR layer install
+- Error strings from import, live connect, VR layer install, or voice pack load / record
+- Voice pack folder paths and missing clip keys (`voice pack '…' has no clip for <key>`)
 
 Do not share raw logs publicly if they contain paths or driver names you want private.
 

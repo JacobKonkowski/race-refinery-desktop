@@ -6,7 +6,7 @@ dependency table and contributor playbook.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  React shell + features (Analyze | Live | Voice Studio) │
+│  React shell + features (Analyze | Live | Voice Studio | Settings) │
 │  widgets catalog → monitor windows + VR HUD             │
 └─────────────┬───────────────────────────┬───────────────┘
               │ invoke / events           │

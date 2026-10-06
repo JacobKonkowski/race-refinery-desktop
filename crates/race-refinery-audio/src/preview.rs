@@ -5,6 +5,7 @@ use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread;
+use std::time::Duration;
 
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
@@ -230,34 +231,46 @@ impl PreviewPlayer {
             let current = || generation.load(Ordering::SeqCst) == gen;
             match AudioPlayer::new(pack, volume) {
                 Ok(player) => {
-                    for (index, plan) in items.iter().enumerate() {
+                    let mut index = 0;
+                    while index < items.len() {
+                        // Wait out a pause without holding the speak lock, so the
+                        // live coach can still talk while a preview is paused.
+                        while paused.load(Ordering::SeqCst) && current() {
+                            status.lock().paused = true;
+                            thread::sleep(Duration::from_millis(50));
+                        }
                         if !current() {
                             return;
                         }
+                        let plan = &items[index];
                         {
                             let mut s = status.lock();
                             s.index = index;
+                            s.paused = false;
                             s.text = plan.display_text();
                         }
-                        let _speaking = speak_lock.lock();
-                        let mut control = || {
-                            if !current() {
-                                return Playback::Stop;
-                            }
-                            if skip.swap(false, Ordering::SeqCst) {
-                                return Playback::Stop;
-                            }
-                            let p = paused.load(Ordering::SeqCst);
-                            status.lock().paused = p;
-                            if p {
-                                Playback::Pause
-                            } else {
+                        let mut interrupted = false;
+                        let result = {
+                            let _speaking = speak_lock.lock();
+                            let mut control = || {
+                                if !current() || skip.swap(false, Ordering::SeqCst) {
+                                    return Playback::Stop;
+                                }
+                                if paused.load(Ordering::SeqCst) {
+                                    interrupted = true;
+                                    return Playback::Stop;
+                                }
                                 Playback::Play
-                            }
+                            };
+                            player.play_plan_with(plan, &mut control)
                         };
-                        if let Err(e) = player.play_plan_with(plan, &mut control) {
+                        if let Err(e) = result {
                             tracing::warn!("preview playback failed: {e:#}");
                             break;
+                        }
+                        // A paused line replays from its start on resume.
+                        if !interrupted {
+                            index += 1;
                         }
                     }
                 }

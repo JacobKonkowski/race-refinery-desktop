@@ -13,7 +13,7 @@ The phrase registry ([`phrases.txt`](../crates/race-refinery-audio/src/phrases.t
 | **Spotter** | 38 stand-alone lines: session intro, flags, traffic (car left / right, three wide, clear), gap trends, race clock, pits open, incident, hot tyres, invalid lap, stock fuel calls | Every safety and traffic call. Record this first. |
 | **Engineer** | Numbers `n0`–`n20` plus `n30`…`n90`, glue words (`point`, `minute`, `seconds`, `faster`, `liters`, `laps`, …), and pace / gap / position intros | Lap and sector times, deltas, gaps, positions, fuel counts, incident counts |
 
-A pack with only the Spotter tier is fully usable: callouts that need Engineer clips are skipped, never read out by a robot voice. Numbers 21–99 are spoken as tens + ones (29 = "twenty" + "nine") and 100+ digit by digit, so 29 number clips cover every value.
+A pack with only the Spotter tier is fully usable: callouts that need Engineer clips are skipped, never read out by a robot voice. Numbers 21–99 are spoken as tens + ones (29 = "twenty" + "nine") and 100+ digit by digit, so the 28 number clips (`n0`–`n20` and `n30`…`n90`) cover every value.
 
 ---
 
@@ -87,7 +87,13 @@ my-voice/
 | User | `%LOCALAPPDATA%\race-refinery\voice-packs\<id>\` | Yes |
 | Folder | Any folder you link; stored as an absolute path in `audioCoachPackFolders` | Yes |
 
-The bundled pack is the maintainer's recorded voice and covers every phrase in the registry (a unit test fails if a key is missing from it). To update it, record in a user pack, then copy that pack's `{key}.wav` files and `manifest.json` (not `.undo/`) into the bundled folder; keep the bundled `meta.json`.
+The bundled pack is the maintainer's recorded voice and covers every phrase in the registry (a unit test fails if a key is missing from it).
+
+The bundled folder and a user pack such as "New default" are **separate copies**. Re-recording in Voice Studio only changes the user pack. To refresh the default that ships with the app:
+
+1. Record in a user pack (Voice Studio can write there).
+2. Copy that pack's `{key}.wav` files and `manifest.json` into `src-tauri/resources/audio/coach/default/`. Leave out `.undo/` (take backups). Keep the bundled `meta.json` so the name and license stay "Race Refinery default".
+3. Commit the changed files. Until they are committed and built, only this checkout hears the new takes.
 
 ---
 

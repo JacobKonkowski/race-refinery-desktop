@@ -1,6 +1,6 @@
 # Race Refinery documentation hub
 
-Race Refinery helps you get faster in iRacing: **Analyze** your IBT telemetry after a session, and **Live** coach + HUD while you drive (voice callouts and an in-headset OpenXR panel).
+Race Refinery helps you get faster in iRacing: **Analyze** your IBT telemetry after a session, **Live** coach + HUD while you drive, and **Voice Studio** to record the coach's voice packs.
 
 ## Guides
 
@@ -8,8 +8,8 @@ Race Refinery helps you get faster in iRacing: **Analyze** your IBT telemetry af
 |-----|----------|
 | [FOUNDATION.md](FOUNDATION.md) | **Start here** — crates, deps, AI/PR playbook |
 | [SETUP.md](SETUP.md) | Prerequisites, first run, race-night checklist |
-| [FEATURES.md](FEATURES.md) | What Analyze and Live do |
-| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Import, live, audio, VR |
+| [FEATURES.md](FEATURES.md) | What Analyze, Live, Voice Studio, and Settings do |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Import, live, audio coach / Voice Studio, VR |
 | [API.md](API.md) | Tauri commands + frontend IPC (`src/shared`) |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Modules, feature registry, data flow |
 | [DATA_MODEL.md](DATA_MODEL.md) | SQLite schema v2, settings |
@@ -45,6 +45,7 @@ Race Refinery helps you get faster in iRacing: **Analyze** your IBT telemetry af
 - Coach phrases → `crates/race-refinery-audio/src/phrases.txt`, [AUDIO_COACH.md](AUDIO_COACH.md), [VOICE_PACKS.md](VOICE_PACKS.md)
 - Types → `src/shared/types.ts`, [DATA_MODEL.md](DATA_MODEL.md)
 - Live UI → `src/features/live/LivePage.tsx`
+- Voice Studio UI → `src/features/voice-studio/*`
 - Analyze UI → `src/features/analyze/*`
 - Analysis cleanup → `crates/race-refinery-analysis`, [ANALYSIS.md](ANALYSIS.md)
 - Feature list → `src/features/registry.ts`

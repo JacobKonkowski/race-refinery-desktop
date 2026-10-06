@@ -60,7 +60,7 @@ channel (cars without ABS still record it, as `0`).
 
 ## Settings
 
-JSON beside the DB (`settings/mod.rs` → `AppSettings`). Includes:
+JSON beside the DB (`crates/race-refinery-settings` → `AppSettings`). Includes:
 
 - `vrMode` (`native` \| `web`), HUD offset/opacity, recenter bindings (`vrRecenterHotkey` accelerator string, `vrRecenterButton` `{deviceGuid, deviceName, button}` or null)
 - `overlayLayout` — five widget slots (monitor + VR) + field pace mode; layouts saved by older builds are padded to the current slot count on load. Each slot's VR fields: `vrLock` (`world` \| `head`), `vrOffsetX/Y/Z`, `vrTiltDeg`, `vrScale`, `vrOpacity`; missing fields load as world-locked with zero offsets
