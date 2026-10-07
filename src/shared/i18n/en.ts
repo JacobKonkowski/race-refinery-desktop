@@ -1,6 +1,6 @@
 /** English UI strings — see docs/I18N.md */
 export const en = {
-  "app.name": "PitWall",
+  "app.name": "Race Refinery",
   "nav.analyze": "Analyze",
   "nav.live": "Live",
   "live.startMonitor": "Start live monitor",

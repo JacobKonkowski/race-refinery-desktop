@@ -1,4 +1,4 @@
-# PitWall Desktop — first-run setup
+# Race Refinery — first-run setup
 param(
     [switch]$SkipBuild
 )
@@ -18,7 +18,7 @@ function Write-Warn2($msg) {
     Write-Host "    WARNING: $msg" -ForegroundColor Yellow
 }
 
-Write-Step "PitWall Desktop setup"
+Write-Step "Race Refinery setup"
 
 # Rust toolchain (pitwall MSRV 1.89+)
 if (Get-Command rustc -ErrorAction SilentlyContinue) {

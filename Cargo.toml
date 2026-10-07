@@ -1,21 +1,22 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/pitwall-telemetry",
-    "crates/pitwall-analysis",
-    "crates/pitwall-settings",
-    "crates/pitwall-storage",
-    "crates/pitwall-ingest",
-    "crates/pitwall-live",
-    "crates/pitwall-audio",
-    "crates/pitwall-vr",
-    "crates/pitwall-monitor",
+    "crates/race-refinery-telemetry",
+    "crates/race-refinery-analysis",
+    "crates/race-refinery-settings",
+    "crates/race-refinery-storage",
+    "crates/race-refinery-ingest",
+    "crates/race-refinery-live",
+    "crates/race-refinery-audio",
+    "crates/race-refinery-vr",
+    "crates/race-refinery-monitor",
+    "crates/race-refinery-input",
     "src-tauri",
 ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-authors = ["jrkon"]
+authors = ["Race Refinery"]
 license = "MIT"
-repository = "https://github.com/JacobKonkowski/pitwall-desktop"
+repository = "https://github.com/JacobKonkowski/race-refinery-desktop"

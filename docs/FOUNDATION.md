@@ -1,13 +1,14 @@
-# PitWall foundation
+# Race Refinery foundation
 
 This document is the onboarding map for contributors and AI assistants.
 
 ## Goals
 
-PitWall is a **Windows** desktop app for iRacing:
+Race Refinery is a **Windows** desktop app for iRacing:
 
 - **Analyze** — import IBT files, review laps, compare traces
 - **Live** — shared-memory telemetry, voice coach, dual-surface widgets
+- **Voice Studio** — record the coach's voice packs (human recordings only, no TTS)
 
 Surfaces for live widgets: **monitor** (always-on-top windows) and **VR** (OpenXR API layer). One widget catalog; enable once, place twice.
 
@@ -15,22 +16,22 @@ Surfaces for live widgets: **monitor** (always-on-top windows) and **VR** (OpenX
 
 | Crate | Role | May depend on |
 |-------|------|----------------|
-| `pitwall-telemetry` | Raw frame / sector types | — |
-| `pitwall-analysis` | Pure IBT pipeline + cleanup | telemetry |
-| `pitwall-settings` | JSON settings | — |
-| `pitwall-storage` | SQLite | analysis |
-| `pitwall-ingest` | IBT parse/import/watcher | analysis, storage, telemetry |
-| `pitwall-live` | LiveSnapshot producer | telemetry, settings |
-| `pitwall-audio` | Path B coach | live, settings |
-| `pitwall-monitor` | Desktop monitor widget host | live, settings |
-| `pitwall-vr` | SHM + OpenXR install + web HUD | live, settings |
-| `pitwall-desktop` (`src-tauri`) | Tauri commands / composition | all |
+| `race-refinery-telemetry` | Raw frame / sector types | — |
+| `race-refinery-analysis` | Pure IBT pipeline + cleanup | telemetry |
+| `race-refinery-settings` | JSON settings | — |
+| `race-refinery-storage` | SQLite | analysis |
+| `race-refinery-ingest` | IBT parse/import/watcher | analysis, storage, telemetry |
+| `race-refinery-live` | LiveSnapshot producer | telemetry, settings |
+| `race-refinery-audio` | Path B coach, voice packs, mic recording, preview | live, settings |
+| `race-refinery-monitor` | Desktop monitor widget host | live, settings |
+| `race-refinery-vr` | SHM + OpenXR install + web HUD | live, settings |
+| `race-refinery-desktop` (`src-tauri`) | Tauri commands / composition | all |
 
 **Forbidden:** domain crates depending on `commands` / desktop; `live` → `audio`; `monitor` ↔ `vr`; `analysis` → `storage`/`tauri`.
 
 ## Import path policy
 
-`import_ibt` only accepts `.ibt` paths under the default telemetry directory (see `pitwall_ingest::validate_import_path`). Prefer the file dialog or folder watcher.
+`import_ibt` only accepts `.ibt` paths under the default telemetry directory (see `race_refinery_ingest::validate_import_path`). Prefer the file dialog or folder watcher.
 
 ## Schema migrations
 
@@ -42,11 +43,11 @@ Surfaces for live widgets: **monitor** (always-on-top windows) and **VR** (OpenX
 2. Touch one crate first; IPC/UI last.
 3. Add/extend unit tests in that crate.
 4. Do not rename crates and change behavior in the same PR.
-5. Prompt boundary example: “Only modify `crates/pitwall-audio/src/engine/rules/pace.rs` and its tests.”
+5. Prompt boundary example: “Only modify `crates/race-refinery-audio/src/engine/rules/pace.rs` and its tests.”
 
 ## Good first slices
 
-- New coach rule under `pitwall-audio` `engine/rules/`
+- New coach rule under `race-refinery-audio` `engine/rules/`
 - Widget presentational tweak in `src/widgets/`
 - Docs-only clarification in `docs/`
 

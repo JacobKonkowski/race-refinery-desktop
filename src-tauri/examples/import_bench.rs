@@ -5,8 +5,8 @@ use std::env;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use pitwall_desktop_lib::ingest::ibt_importer::{parse_ibt_file_fast, save_parsed_ibt};
-use pitwall_desktop_lib::storage::Database;
+use race_refinery_desktop_lib::ingest::ibt_importer::{parse_ibt_file_fast, save_parsed_ibt};
+use race_refinery_desktop_lib::storage::Database;
 
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
@@ -21,7 +21,8 @@ fn main() -> anyhow::Result<()> {
     let started = Instant::now();
     let progress = Some(Box::new(|pct: f64, msg: String| {
         println!("  [{pct:.0}%] {msg}");
-    }) as pitwall_desktop_lib::ingest::ProgressCallback);
+    })
+        as race_refinery_desktop_lib::ingest::ProgressCallback);
 
     let (parsed, hash, elapsed) = parse_ibt_file_fast(&path, progress)?;
 

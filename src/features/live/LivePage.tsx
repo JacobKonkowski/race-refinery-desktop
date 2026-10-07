@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   buildOpenKneeboardUrl,
   checkVrHudHealth,
@@ -15,6 +15,7 @@ import {
   onLiveTelemetry,
   openVrHudPreview,
   patchSettings,
+  recenterVr,
   saveSettings,
   startAudioCoach,
   startDemoClock,
@@ -30,6 +31,8 @@ import {
   uninstallVrLayer,
 } from "../../shared/api";
 import { formatDelta, formatLapTime, formatLiters, formatTemp } from "../../shared/format";
+import { Slider } from "../../shared/Slider";
+import { TierBadges } from "../../shared/TierBadges";
 import { showToast } from "../../shared/toast";
 import type {
   AppSettings,
@@ -40,10 +43,12 @@ import type {
   NativeVrStatus,
   VrLayerDiagnostics,
   VrOverlayStatus,
-  WidgetKind,
+  WidgetPlacement,
 } from "../../shared/types";
-import { WIDGET_KINDS, WIDGET_LABELS } from "../../shared/types";
-import { CoachWidget } from "../../widgets";
+import { useLapTrail } from "../../shared/useLapTrail";
+import { coachTestMessage } from "../../shared/voicePacks";
+import { useTrackMap } from "../../shared/useTrackMap";
+import { CoachWidget, TrackMapWidget } from "../../widgets";
 import { SessionLeaderboard } from "./SessionLeaderboard";
 
 const VR_PREVIEW_URL = "http://127.0.0.1:17342/vr";
@@ -138,7 +143,7 @@ export function LivePage() {
   }, [refresh]);
 
   useEffect(() => {
-    if (!vrStatus?.active || vrStatus.mode === "native") {
+    if (!vrStatus?.active) {
       setVrHudHealthy(null);
       return;
     }
@@ -158,7 +163,7 @@ export function LivePage() {
       cancelled = true;
       clearInterval(id);
     };
-  }, [vrStatus?.active, vrStatus?.mode]);
+  }, [vrStatus?.active]);
 
   useEffect(() => {
     if (!vrStatus?.active || vrStatus.mode !== "native") return;
@@ -208,27 +213,30 @@ export function LivePage() {
     }
   };
 
-  const fieldPace = settings?.overlayLayout?.fieldPaceMode ?? "best";
+  const vrSaveTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (vrSaveTimer.current !== null) window.clearTimeout(vrSaveTimer.current);
+    },
+    [],
+  );
 
-  const selectedWidget: WidgetKind | null =
-    WIDGET_KINDS.find((_, i) => settings?.overlayLayout?.widgets[i]?.enabled) ?? null;
-
-  /** Enable only `kind`, persist, and reopen monitor windows if they are showing. */
-  const selectMonitorWidget = (kind: WidgetKind) => {
+  // Only the coach slot's VR fields change here; desktop* stays with the monitor overlay.
+  const updateCoachVr = (patch: Partial<WidgetPlacement>) => {
     if (!settings) return;
-    const idx = WIDGET_KINDS.indexOf(kind);
-    const next: AppSettings = {
-      ...settings,
-      overlayLayout: {
-        ...settings.overlayLayout,
-        widgets: settings.overlayLayout.widgets.map((w, i) => ({ ...w, enabled: i === idx })),
-      },
-    };
-    run("Select widget", async () => {
-      await saveSettings(next);
-      if (monitorStatus?.active) await startMonitorOverlay();
-    });
+    const widgets = settings.overlayLayout.widgets.map((w, i) => (i === 0 ? { ...w, ...patch } : w));
+    const next = { ...settings, overlayLayout: { ...settings.overlayLayout, widgets } };
+    setSettings(next);
+    if (vrSaveTimer.current !== null) window.clearTimeout(vrSaveTimer.current);
+    vrSaveTimer.current = window.setTimeout(() => {
+      saveSettings(next).catch((e) => showToast(`VR settings save failed: ${String(e)}`, "error"));
+    }, 150);
   };
+
+  const coachPlacement = settings?.overlayLayout?.widgets?.[0];
+  const fieldPace = settings?.overlayLayout?.fieldPaceMode ?? "best";
+  const trackMap = useTrackMap(snap?.track);
+  const lapTrail = useLapTrail(snap);
 
   return (
     <div className="live-page">
@@ -335,6 +343,23 @@ export function LivePage() {
                 </div>
               </div>
 
+              
+              <div className="panel">
+                <div className="panel-header">
+                  <h2>Track map</h2>
+                  <span className="muted">{snap.track}</span>
+                </div>
+                <div className="panel-body">
+                  <div className="pw-widget live-trackmap-preview">
+                    <TrackMapWidget
+                      outline={trackMap}
+                      snap={snap}
+                      candidateTraces={lapTrail}
+                    />
+                  </div>
+                </div>
+              </div>
+
               <SessionLeaderboard competitors={snap.competitors} />
 
               <div className="panel">
@@ -361,7 +386,12 @@ export function LivePage() {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={() => run("Test coach", testAudioCoach)}
+                  onClick={() =>
+                    run("Test coach", async () => {
+                      const message = coachTestMessage(await testAudioCoach());
+                      if (message) showToast(message);
+                    })
+                  }
                 >
                   Test Coach
                 </button>
@@ -378,6 +408,12 @@ export function LivePage() {
                   {audioStatus?.active ? "Stop coach" : "Start coach"}
                 </button>
               </div>
+              {audioStatus ? (
+                <div className="btn-row">
+                  <span className="muted small">Voice: {audioStatus.packName}</span>
+                  <TierBadges spotter={audioStatus.spotter} engineer={audioStatus.engineer} />
+                </div>
+              ) : null}
               {audioStatus?.lastMessage ? (
                 <p className="audio-coach-last muted small">
                   <strong>Last spoken:</strong> {audioStatus.lastMessage}
@@ -437,22 +473,6 @@ export function LivePage() {
                   {monitorStatus?.active ? "Stop monitor overlays" : "Start monitor overlays"}
                 </button>
               </div>
-              {settings ? (
-                <div className="monitor-widget-select" role="radiogroup" aria-label="Overlay widget">
-                  {WIDGET_KINDS.map((kind) => (
-                    <label key={kind} className="toggle-row">
-                      <input
-                        type="radio"
-                        name="monitor-widget"
-                        value={kind}
-                        checked={selectedWidget === kind}
-                        onChange={() => selectMonitorWidget(kind)}
-                      />
-                      <span>{WIDGET_LABELS[kind]}</span>
-                    </label>
-                  ))}
-                </div>
-              ) : null}
               <p className="muted small">{monitorStatus?.message || "Monitor overlay idle"}</p>
               {monitorStatus?.windows?.length ? (
                 <p className="muted small">
@@ -498,6 +518,16 @@ export function LivePage() {
                 >
                   {vrStatus?.active ? "Stop HUD" : "Start HUD"}
                 </button>
+                {vrStatus?.active ? (
+                  <button
+                    type="button"
+                    className="btn"
+                    title="Re-anchor world-locked widgets in front of your current head position"
+                    onClick={() => run("Recenter", recenterVr)}
+                  >
+                    Recenter
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="btn"
@@ -524,11 +554,44 @@ export function LivePage() {
                 <span className="vr-health-pill vr-health-err">HUD server not responding</span>
               )}
 
+              {coachPlacement ? (
+                <div className="vr-sliders">
+                  <h3>Coach in headset</h3>
+                  <Slider
+                    label="Size"
+                    value={coachPlacement.vrScale}
+                    min={0.25}
+                    max={1.25}
+                    step={0.05}
+                    format={(v) => `${v.toFixed(2)}×`}
+                    onChange={(v) => updateCoachVr({ vrScale: v })}
+                  />
+                  <Slider
+                    label="Opacity"
+                    value={coachPlacement.vrOpacity}
+                    min={0.2}
+                    max={1}
+                    step={0.05}
+                    format={(v) => `${Math.round(v * 100)}%`}
+                    onChange={(v) => updateCoachVr({ vrOpacity: v })}
+                  />
+                  <Slider
+                    label="Height"
+                    value={coachPlacement.vrOffsetY}
+                    min={-0.4}
+                    max={0.4}
+                    step={0.02}
+                    format={(v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)} m`}
+                    onChange={(v) => updateCoachVr({ vrOffsetY: v })}
+                  />
+                </div>
+              ) : null}
+
               <div className="vr-checklist">
                 <h3>RaceLab-off checklist</h3>
                 <ul className="muted small">
-                  <li>Disable RaceLab VR (and other OpenXR API layers) before using PitWall native.</li>
-                  <li>Install the PitWall OpenXR layer once, then restart iRacing in OpenXR / VR mode.</li>
+                  <li>Disable RaceLab VR (and other OpenXR API layers) before using Race Refinery native.</li>
+                  <li>Install the Race Refinery OpenXR layer once, then restart iRacing in OpenXR / VR mode.</li>
                   <li>Only one implicit OpenXR layer stack should be active — two layers fight for compositing.</li>
                   <li>Confirm layer diagnostics show ready, then Start HUD and verify the test-pattern quad.</li>
                 </ul>

@@ -1,0 +1,11 @@
+{
+  "file_format_version": "1.0.0",
+  "api_layer": {
+    "name": "XR_APILAYER_RACE_REFINERY_overlay",
+    "library_path": ".\\race-refinery-openxr-layer.dll",
+    "api_version": "1.0",
+    "implementation_version": "1",
+    "description": "Race Refinery in-headset HUD compositor",
+    "disable_environment": "RACE_REFINERY_VR_DISABLE"
+  }
+}

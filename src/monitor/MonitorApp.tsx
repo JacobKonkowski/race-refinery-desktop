@@ -8,6 +8,8 @@ import {
 } from "../shared/api";
 import type { AppSettings, LiveSnapshot, WidgetKind } from "../shared/types";
 import { WIDGET_KINDS } from "../shared/types";
+import { useLapTrail } from "../shared/useLapTrail";
+import { useTrackMap } from "../shared/useTrackMap";
 import { Widget } from "../widgets";
 
 function kindFromLabel(label: string): WidgetKind | null {
@@ -22,6 +24,8 @@ export function MonitorApp() {
   const [snap, setSnap] = useState<LiveSnapshot | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const trackMap = useTrackMap(snap?.track);
+  const lapTrail = useLapTrail(snap);
 
   useEffect(() => {
     try {
@@ -77,7 +81,13 @@ export function MonitorApp() {
 
   return (
     <div className="pw-widget monitor-shell" data-tauri-drag-region>
-      <Widget kind={kind} snap={snap} fieldPaceMode={fieldPace} />
+      <Widget
+        kind={kind}
+        snap={snap}
+        fieldPaceMode={fieldPace}
+        outline={trackMap}
+        trail={lapTrail}
+      />
     </div>
   );
 }

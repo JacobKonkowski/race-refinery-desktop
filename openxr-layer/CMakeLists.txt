@@ -1,16 +1,16 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(pitwall-openxr-layer LANGUAGES CXX)
+project(race-refinery-openxr-layer LANGUAGES CXX)
 
 # This is a standalone Windows OpenXR API layer, intentionally built outside the
 # Tauri/Cargo tree. It is loaded by the OpenXR loader into the iRacing process,
-# not into PitWall. See docs/NATIVE_VR.md for the build + install story.
+# not into Race Refinery. See docs/NATIVE_VR.md for the build + install story.
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(NOT WIN32)
-    message(FATAL_ERROR "pitwall-openxr-layer targets Windows (D3D11 + Win32 SHM) only.")
+    message(FATAL_ERROR "race-refinery-openxr-layer targets Windows (D3D11 + Win32 SHM) only.")
 endif()
 
 include(FetchContent)
@@ -25,18 +25,18 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(OpenXR)
 
-add_library(pitwall-openxr-layer SHARED
+add_library(race-refinery-openxr-layer SHARED
     src/layer.cpp
     src/hud_renderer.cpp
-    pitwall-openxr-layer.def
+    race-refinery-openxr-layer.def
 )
 
-target_include_directories(pitwall-openxr-layer PRIVATE
+target_include_directories(race-refinery-openxr-layer PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
-target_compile_definitions(pitwall-openxr-layer PRIVATE
+target_compile_definitions(race-refinery-openxr-layer PRIVATE
     XR_USE_GRAPHICS_API_D3D11
     XR_USE_PLATFORM_WIN32
     NOMINMAX
@@ -45,7 +45,7 @@ target_compile_definitions(pitwall-openxr-layer PRIVATE
     _UNICODE
 )
 
-target_link_libraries(pitwall-openxr-layer PRIVATE
+target_link_libraries(race-refinery-openxr-layer PRIVATE
     OpenXR::headers
     d3d11
     dxgi
@@ -54,14 +54,14 @@ target_link_libraries(pitwall-openxr-layer PRIVATE
 )
 
 # The runtime expects the DLL name referenced by the manifest's library_path.
-set_target_properties(pitwall-openxr-layer PROPERTIES
-    OUTPUT_NAME "pitwall-openxr-layer"
+set_target_properties(race-refinery-openxr-layer PROPERTIES
+    OUTPUT_NAME "race-refinery-openxr-layer"
     PREFIX ""
 )
 
 # Stage the DLL next to the manifest so the registry key can point at one folder.
-add_custom_command(TARGET pitwall-openxr-layer POST_BUILD
+add_custom_command(TARGET race-refinery-openxr-layer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
-        "${CMAKE_CURRENT_SOURCE_DIR}/manifest/pitwall_openxr_layer.json"
-        "$<TARGET_FILE_DIR:pitwall-openxr-layer>/pitwall_openxr_layer.json"
+        "${CMAKE_CURRENT_SOURCE_DIR}/manifest/race_refinery_openxr_layer.json"
+        "$<TARGET_FILE_DIR:race-refinery-openxr-layer>/race_refinery_openxr_layer.json"
 )

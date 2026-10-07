@@ -1,0 +1,22 @@
+[package]
+name = "race-refinery-ingest"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "IBT file discovery, parsing, and import orchestration"
+
+[dependencies]
+race-refinery-analysis = { path = "../race-refinery-analysis" }
+race-refinery-storage = { path = "../race-refinery-storage" }
+race-refinery-telemetry = { path = "../race-refinery-telemetry" }
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "6"
+notify = "8"
+parking_lot = "0.12"
+pitwall = { version = "0.1", features = ["derive"] }
+sha2 = "0.10"
+tauri = { version = "2", features = [] }
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"

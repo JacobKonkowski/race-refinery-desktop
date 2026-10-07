@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   checkIracingConfig,
   confirmDialog,
@@ -6,8 +6,10 @@ import {
   getSession,
   listSessions,
   onImportComplete,
+  reimportSession,
 } from "../../shared/api";
 import { showToast } from "../../shared/toast";
+import { useTrackMap } from "../../shared/useTrackMap";
 import type {
   IracingConfigCheck,
   LapSummary,
@@ -21,10 +23,11 @@ import { InsightsStrip } from "./InsightsStrip";
 import { LapTable } from "./LapTable";
 import { SessionBrowser } from "./SessionBrowser";
 import { SessionHeader } from "./SessionHeader";
+import { TrackMapPanel } from "./TrackMapPanel";
 import { computeSessionStats } from "./sessionStats";
 import { useImportActions } from "./useImportActions";
 
-const LAST_SESSION_KEY = "pitwall.lastSessionId";
+const LAST_SESSION_KEY = "raceRefinery.lastSessionId";
 
 /** Fastest pace-eligible lap in the session (the default compare reference). */
 function defaultReferenceLap(laps: LapSummary[]): LapSummary | null {
@@ -64,6 +67,19 @@ export function AnalyzePage() {
   const [candidateLapId, setCandidateLapId] = useState<number | null>(null);
   const [referenceLapId, setReferenceLapId] = useState<number | null>(null);
   const [config, setConfig] = useState<IracingConfigCheck | null>(null);
+  /** Lap fraction hovered on the compare charts, mirrored on the track map. */
+  const [highlightPct, setHighlightPct] = useState<number | null>(null);
+  /** Corner-table / chart focus: zoom the map there. `seq` re-triggers the same pct. */
+  const [mapFocus, setMapFocus] = useState<{ pct: number; seq: number } | null>(null);
+  const focusMapAt = useCallback(
+    (pct: number) => setMapFocus((prev) => ({ pct, seq: (prev?.seq ?? 0) + 1 })),
+    [],
+  );
+  const [reimporting, setReimporting] = useState(false);
+  const [paceOnly, setPaceOnly] = useState(false);
+  const [moreLapColumns, setMoreLapColumns] = useState(false);
+  /** Suppresses auto-select on each import-complete during "Re-import all". */
+  const bulkReimport = useRef(false);
   const importActions = useImportActions();
 
   const selectSession = useCallback((id: number | null) => {
@@ -77,7 +93,6 @@ export function AnalyzePage() {
     return list;
   }, []);
 
-  // Initial load + config check.
   useEffect(() => {
     refreshSessions()
       .then((list) => {
@@ -95,9 +110,9 @@ export function AnalyzePage() {
     checkIracingConfig().then(setConfig).catch(() => undefined);
   }, [refreshSessions]);
 
-  // Refresh (and auto-select) when an import completes.
   useEffect(() => {
     const unlisten = onImportComplete(async (sessionId) => {
+      if (bulkReimport.current) return;
       const list = await refreshSessions();
       if (sessionId && list.some((s) => s.id === sessionId)) {
         selectSession(sessionId);
@@ -108,7 +123,6 @@ export function AnalyzePage() {
     };
   }, [refreshSessions, selectSession]);
 
-  // Load detail when the selected session changes.
   useEffect(() => {
     if (selectedId == null) {
       setDetail(null);
@@ -124,6 +138,7 @@ export function AnalyzePage() {
         const ref = d ? defaultReferenceLap(d.laps) : null;
         setReferenceLapId(ref?.id ?? null);
         setCandidateLapId(null);
+        setMapFocus(null);
       })
       .catch((e) => {
         console.error("getSession failed", e);
@@ -177,12 +192,66 @@ export function AnalyzePage() {
     }
   }, [sessions, refreshSessions]);
 
+  const handleReimport = useCallback(
+    async (sessionId: number) => {
+      setReimporting(true);
+      try {
+        const newId = await reimportSession(sessionId);
+        await refreshSessions();
+        selectSession(newId);
+        showToast("Session re-imported with the latest analysis.", "success");
+      } catch (e) {
+        showToast(String(e), "error");
+      } finally {
+        setReimporting(false);
+      }
+    },
+    [refreshSessions, selectSession],
+  );
+
+  const handleReimportAll = useCallback(async () => {
+    if (sessions.length === 0) return;
+    const ok = await confirmDialog(
+      `Re-analyze all ${sessions.length} session(s) from their IBT files? Sessions whose file is gone are left as they are.`,
+      "Re-import all sessions",
+    );
+    if (!ok) return;
+    setReimporting(true);
+    bulkReimport.current = true;
+    let done = 0;
+    const failed: string[] = [];
+    let nextSelected = selectedId;
+    try {
+      for (const s of sessions) {
+        try {
+          const newId = await reimportSession(s.id);
+          if (s.id === selectedId) nextSelected = newId;
+          done += 1;
+        } catch {
+          failed.push(s.track || `session ${s.id}`);
+        }
+      }
+    } finally {
+      bulkReimport.current = false;
+      setReimporting(false);
+      await refreshSessions();
+      selectSession(nextSelected);
+    }
+    showToast(
+      failed.length === 0
+        ? `Re-imported ${done} session(s).`
+        : `Re-imported ${done}; ${failed.length} skipped (IBT missing or unreadable).`,
+      failed.length === 0 ? "success" : "info",
+    );
+  }, [sessions, selectedId, refreshSessions, selectSession]);
+
   const laps = detail?.laps ?? [];
   const stats = useMemo(() => computeSessionStats(laps), [laps]);
   const sessionTypes = useMemo(
     () => [...new Set(laps.map((l) => l.sessionType).filter(Boolean))],
     [laps],
   );
+  const trackMap = useTrackMap(detail?.session.track);
   const hasEligible = useMemo(() => laps.some((l) => l.paceEligible), [laps]);
   const okChannelPresent = useMemo(
     () => laps.some((l) => l.deltaBestOk !== null),
@@ -199,6 +268,8 @@ export function AnalyzePage() {
         onSelect={selectSession}
         onDelete={handleDelete}
         onDeleteAll={handleDeleteAll}
+        onReimportAll={handleReimportAll}
+        reimporting={reimporting}
       />
       <div className="analyze-workspace">
         {selectedId == null ? (
@@ -209,11 +280,13 @@ export function AnalyzePage() {
           <div className="loading">Session not found.</div>
         ) : (
           <>
-            <div className="panel">
+            <div className="analyze-session-bar panel">
               <SessionHeader
                 session={detail.session}
                 stats={stats}
                 sessionTypes={sessionTypes}
+                onReimport={() => handleReimport(detail.session.id)}
+                reimporting={reimporting}
               />
             </div>
 
@@ -223,17 +296,62 @@ export function AnalyzePage() {
               <ConfigBanner />
             ) : null}
 
-            <div className="panel">
+            <div className="analyze-main">
+              <ComparePanel
+                laps={laps}
+                candidate={candidate}
+                reference={reference}
+                onChangeReference={setReferenceLapId}
+                onHoverDistPct={setHighlightPct}
+                onFocusDistPct={focusMapAt}
+              />
+              <div className="analyze-map-cell">
+                <TrackMapPanel
+                  outline={trackMap}
+                  track={detail.session.track}
+                  candidate={candidate}
+                  reference={reference}
+                  highlightPct={highlightPct}
+                  focus={mapFocus}
+                />
+              </div>
+            </div>
+
+            <div className="panel analyze-lap-picker">
               <div className="panel-header">
                 <h2>Laps</h2>
-                <div className="lap-legend muted" style={{ marginLeft: "auto" }}>
+                <div className="lap-picker-tools">
+                  <label className="lap-filter">
+                    <input
+                      type="checkbox"
+                      checked={paceOnly}
+                      onChange={(e) => setPaceOnly(e.target.checked)}
+                    />
+                    Pace only
+                  </label>
+                  <button
+                    type="button"
+                    className={`btn btn-ghost${moreLapColumns ? " on" : ""}`}
+                    onClick={() => setMoreLapColumns((v) => !v)}
+                  >
+                    {moreLapColumns ? "Fewer columns" : "More columns"}
+                  </button>
+                </div>
+              </div>
+              <div className="lap-select-help muted">
+                <div className="lap-legend">
                   <span>
-                    <span className="swatch cand" /> Candidate — click
+                    <span className="swatch cand" /> Click a lap to compare
                   </span>
                   <span>
-                    <span className="swatch ref" /> Reference — Shift/right-click
+                    <span className="swatch ref" /> Right-click (or Shift-click) to set
+                    reference
                   </span>
                 </div>
+                {candidateLapId != null &&
+                (referenceLapId == null || referenceLapId === candidateLapId) ? (
+                  <p className="lap-ref-hint">Right-click another lap as reference.</p>
+                ) : null}
               </div>
               <div className="panel-body" style={{ padding: 0 }}>
                 <LapTable
@@ -242,18 +360,18 @@ export function AnalyzePage() {
                   referenceLapId={referenceLapId}
                   onSelectCandidate={setCandidateLapId}
                   onSelectReference={setReferenceLapId}
+                  paceOnly={paceOnly}
+                  showTireTemps={moreLapColumns}
                 />
               </div>
             </div>
 
-            <ComparePanel
-              laps={laps}
-              candidate={candidate}
-              reference={reference}
-              onChangeReference={setReferenceLapId}
-            />
-
-            <FuelTirePanel laps={laps} />
+            <details className="analyze-secondary panel">
+              <summary>Fuel &amp; tires</summary>
+              <div className="panel-body">
+                <FuelTirePanel laps={laps} />
+              </div>
+            </details>
           </>
         )}
       </div>

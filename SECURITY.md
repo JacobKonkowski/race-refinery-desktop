@@ -26,7 +26,7 @@ and disclosure timeline.
 
 ## Scope notes
 
-PitWall is a **local Windows desktop** app. It reads iRacing telemetry files and
-shared memory, writes to `%LOCALAPPDATA%\pitwall-desktop\`, and may install an
+Race Refinery is a **local Windows desktop** app. It reads iRacing telemetry files and
+shared memory, writes to `%LOCALAPPDATA%\race-refinery\`, and may install an
 OpenXR API layer. There is **no cloud backend** and **no telemetry phone-home**.
 See [docs/PRIVACY.md](docs/PRIVACY.md).

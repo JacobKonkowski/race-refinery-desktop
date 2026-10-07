@@ -1,0 +1,19 @@
+[package]
+name = "race-refinery-live"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Live iRacing telemetry connection and snapshot"
+
+[dependencies]
+race-refinery-telemetry = { path = "../race-refinery-telemetry" }
+race-refinery-settings = { path = "../race-refinery-settings" }
+futures = "0.3"
+parking_lot = "0.12"
+pitwall = { version = "0.1", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+tauri = { version = "2", features = [] }
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+tracing = "0.1"

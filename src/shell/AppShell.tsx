@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Feature } from "../features/registry";
 import { getImportStatus, onImportStatus } from "../shared/api";
+import { onNavigateToFeature } from "../shared/navigation";
 import { ToastHost } from "../shared/ToastHost";
 import type { ImportStatus } from "../shared/types";
 import { FeatureNav } from "./FeatureNav";
@@ -21,6 +22,8 @@ export function AppShell({ features }: Props) {
     [features, activeId],
   );
 
+  useEffect(() => onNavigateToFeature(setActiveId), []);
+
   if (!active) return null;
   const HeaderActions = active.HeaderActions;
 
@@ -28,7 +31,7 @@ export function AppShell({ features }: Props) {
     <div className="app-shell">
       <header className="app-header" role="banner">
         <div className="app-brand">
-          <span className="brand-mark">PitWall</span>
+          <span className="brand-mark">Race Refinery</span>
           <span className="brand-sub">race telemetry</span>
         </div>
         <div className="app-header-actions" aria-label="Feature actions">

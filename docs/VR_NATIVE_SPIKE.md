@@ -1,6 +1,6 @@
 # VR Native In-Headset HUD — Spike & Decision (**historical**)
 
-> **Historical document.** PitWall’s in-headset HUD now ships via its own OpenXR
+> **Historical document.** Race Refinery’s in-headset HUD now ships via its own OpenXR
 > API layer (`vrMode: native`). Browser preview remains at `:17342`. For current
 > setup and architecture, use **[NATIVE_VR.md](NATIVE_VR.md)** only.
 >
@@ -12,10 +12,10 @@
 
 ## Goal
 
-Determine whether PitWall can render its HUD *inside the headset* as a
+Determine whether Race Refinery can render its HUD *inside the headset* as a
 self-contained feature that draws a panel over the iRacing OpenXR image in VR.
 
-Today PitWall serves its VR HUD from a local HTTP server
+Today Race Refinery serves its VR HUD from a local HTTP server
 ([`src-tauri/src/vr/hud_server.rs`](../src-tauri/src/vr/hud_server.rs)) at
 `http://127.0.0.1:17342/vr`, which the user adds as a Web Dashboard inside
 OpenKneeboard. OpenKneeboard does the actual in-headset compositing. The
@@ -72,7 +72,7 @@ Key properties:
 - The layer is a **standalone C++ DLL** registered with the OpenXR loader via a
   JSON manifest and a registry key
   (`HKLM/HKCU\Software\Khronos\OpenXR\1\ApiLayers\Implicit`). It is **not** code
-  running inside the Tauri webview or the PitWall main process.
+  running inside the Tauri webview or the Race Refinery main process.
 - It must create its own DirectX (11/12) swapchain, render the HUD texture, and
   manage an `XrSpace` for placement. World/view-locking requires recreating the
   reference space on recenter.
@@ -98,9 +98,9 @@ OpenKneeboard is the model to copy if we ever build a native layer:
 - Placement, opacity, and gaze/zoom behavior are driven through that shared
   control block.
 
-For PitWall, the equivalent would be: PitWall main process writes the current
+For Race Refinery, the equivalent would be: Race Refinery main process writes the current
 [`LiveSnapshot`](../src-tauri/src/live/snapshot.rs) (or a pre-rendered HUD
-texture) into shared memory; the PitWall OpenXR layer DLL reads it each frame
+texture) into shared memory; the Race Refinery OpenXR layer DLL reads it each frame
 and composites a quad.
 
 ## iRacing OpenXR runtimes to support
@@ -123,7 +123,7 @@ layer flags, and recenter behavior — hence the per-runtime testing burden.
 
 **Go** only if all of these hold:
 
-1. A static hardcoded quad (e.g. "PitWall" text) renders correctly in iRacing VR
+1. A static hardcoded quad (e.g. "Race Refinery" text) renders correctly in iRacing VR
    on at least the two most common runtimes (Meta + SteamVR OpenXR).
 2. The layer composes cleanly when OpenKneeboard / OpenXR Toolkit are also
    installed (no black screen, no crash, sane load order).
@@ -158,7 +158,7 @@ costly: keep OpenKneeboard path as official VR HUD."
 
 Rather than a native layer, make the OpenKneeboard path more self-explanatory:
 
-- PitWall already exposes the HUD URL and setup steps in the Live panel.
+- Race Refinery already exposes the HUD URL and setup steps in the Live panel.
 - The HUD server (`hud_server.rs`) is the integration surface; the setup
   checklist should surface only when relevant (server up, OpenKneeboard not yet
   pointed at the URL). This is a far cheaper win than a native compositor.
@@ -172,7 +172,7 @@ Time-box to 2–3 focused sessions:
    Ybalrid/OpenXR-API-Layer-Template.
 2. Register an implicit API layer; shim `xrEndFrame`; append a hardcoded
    `XrCompositionLayerQuad`. Success = static panel visible in iRacing VR.
-3. Add a shared-memory channel and pipe `LiveSnapshot` from PitWall into the
+3. Add a shared-memory channel and pipe `LiveSnapshot` from Race Refinery into the
    layer; render real telemetry.
 4. Re-evaluate against the Go/No-go criteria above before investing further.
 

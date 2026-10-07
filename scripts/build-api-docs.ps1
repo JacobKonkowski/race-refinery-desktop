@@ -7,7 +7,7 @@ $TsOut = Join-Path $OutDir "ts"
 
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
-Write-Host "Building Rust API docs (pitwall_desktop_lib)..."
+Write-Host "Building Rust API docs (race_refinery_desktop_lib)..."
 $TauriDir = Join-Path $Root "src-tauri"
 $TargetDir = Join-Path $TauriDir "target"
 $env:CARGO_TARGET_DIR = $TargetDir
@@ -37,7 +37,7 @@ try {
     Pop-Location
 }
 
-$RustIndex = Join-Path $RustOut "pitwall_desktop_lib\index.html"
+$RustIndex = Join-Path $RustOut "race_refinery_desktop_lib\index.html"
 $TsIndex = Join-Path $TsOut "index.html"
 
 Write-Host ""

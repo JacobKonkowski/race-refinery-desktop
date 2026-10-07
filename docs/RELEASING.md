@@ -20,9 +20,9 @@ Keep these aligned on every release. Prefer SemVer (`0.1.0`).
 
 ## Auto-updater
 
-PitWall uses `@tauri-apps/plugin-updater` / `tauri-plugin-updater`.
+Race Refinery uses `@tauri-apps/plugin-updater` / `tauri-plugin-updater`.
 
-1. Generate signing keys: `npm run tauri signer generate -w ~/.tauri/pitwall.key`
+1. Generate signing keys: `npm run tauri signer generate -w ~/.tauri/race-refinery.key`
 2. Set GitHub secrets / env for the private key at release time.
 3. Publish update JSON next to release artifacts (see Tauri updater docs).
 4. Frontend may call `check()` on startup (opt-in in settings when wired).

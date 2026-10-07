@@ -1,5 +1,5 @@
 /**
- * Tauri IPC wrappers for the PitWall backend.
+ * Tauri IPC wrappers for the Race Refinery backend.
  *
  * Commands use `invoke()`; live/import updates use `listen()` helpers below.
  * Analyze, live, audio, monitor, and VR handlers are registered in
@@ -11,7 +11,10 @@ import { ask } from "@tauri-apps/plugin-dialog";
 import type {
   AppSettings,
   AudioCoachStatus,
+  ControllerBinding,
+  CornerConsistency,
   ImportStatus,
+  InputDevice,
   IracingConfigCheck,
   LapComparison,
   LapTrace,
@@ -21,7 +24,18 @@ import type {
   NativeVrStatus,
   SessionDetail,
   SessionSummary,
-  TtsVoiceInfo,
+  TrackOutline,
+  VoiceComposition,
+  VoiceImportReport,
+  VoicePackImport,
+  VoicePackStatus,
+  VoicePhrase,
+  VoicePlaylist,
+  VoicePlayReport,
+  VoicePreset,
+  VoicePreviewControl,
+  VoicePreviewStatus,
+  VoiceTakeResult,
   VrLayerDiagnostics,
   VrOverlayStatus,
 } from "./types";
@@ -40,11 +54,24 @@ export async function getLapTraces(lapIds: number[]): Promise<LapTrace[]> {
   return invoke("get_lap_traces", { lapIds });
 }
 
+/** Cached circuit outline for a track; `null` until an IBT with GPS is imported. */
+export async function getTrackMap(track: string): Promise<TrackOutline | null> {
+  return invoke("get_track_map", { track });
+}
+
 export async function compareLaps(
   candidateLapId: number,
   referenceLapId: number,
 ): Promise<LapComparison> {
   return invoke("compare_laps", { candidateLapId, referenceLapId });
+}
+
+/** Each lap's brake point and corner time through the reference lap's corners. */
+export async function cornerConsistency(
+  referenceLapId: number,
+  lapIds: number[],
+): Promise<CornerConsistency[]> {
+  return invoke("corner_consistency", { referenceLapId, lapIds });
 }
 
 export async function importIbt(path: string): Promise<string> {
@@ -73,6 +100,11 @@ export async function clearDatabase(): Promise<number> {
 
 export async function deleteSession(sessionId: number): Promise<boolean> {
   return invoke("delete_session_cmd", { sessionId });
+}
+
+/** Re-parse a session's source IBT with the current analysis; resolves to the new session id. */
+export async function reimportSession(sessionId: number): Promise<number> {
+  return invoke("reimport_session_cmd", { sessionId });
 }
 
 /** Native yes/no dialog (Tauri webview blocks `window.confirm`). */
@@ -161,12 +193,124 @@ export async function getAudioCoachMessage(): Promise<string> {
   return invoke("get_audio_coach_message");
 }
 
-export async function testAudioCoach(): Promise<void> {
+/** Play a lap callout with the active voice pack; reports clips the pack lacks. */
+export async function testAudioCoach(): Promise<VoicePlayReport> {
   return invoke("test_audio_coach");
 }
 
-export async function listTtsVoices(): Promise<TtsVoiceInfo[]> {
-  return invoke("list_tts_voices_cmd");
+/* --- Voice packs / Voice Studio --- */
+
+export async function listVoicePhrases(): Promise<VoicePhrase[]> {
+  return invoke("list_voice_phrases");
+}
+
+export async function listVoicePacks(): Promise<VoicePackStatus[]> {
+  return invoke("list_voice_packs");
+}
+
+export async function getVoicePackStatus(pack: string): Promise<VoicePackStatus> {
+  return invoke("get_voice_pack_status", { pack });
+}
+
+export async function createVoicePack(name: string): Promise<VoicePackStatus> {
+  return invoke("create_voice_pack", { name });
+}
+
+export async function cloneVoicePack(source: string, name: string): Promise<VoicePackStatus> {
+  return invoke("clone_voice_pack", { source, name });
+}
+
+export async function deleteVoicePack(pack: string): Promise<void> {
+  return invoke("delete_voice_pack", { pack });
+}
+
+export async function setActiveVoicePack(pack: string): Promise<AppSettings> {
+  return invoke("set_active_voice_pack", { pack });
+}
+
+/** Pick a pack zip and import it as a new user pack; null when cancelled. */
+export async function importVoicePackZip(): Promise<VoicePackImport | null> {
+  return invoke("import_voice_pack_zip");
+}
+
+/** Save a pack as a zip; resolves to the written path, null when cancelled. */
+export async function exportVoicePackZip(pack: string): Promise<string | null> {
+  return invoke("export_voice_pack_zip", { pack });
+}
+
+/** Pick a folder and list it as a voice pack; null when cancelled. */
+export async function linkVoicePackFolder(): Promise<VoicePackStatus | null> {
+  return invoke("link_voice_pack_folder");
+}
+
+export async function unlinkVoicePackFolder(pack: string): Promise<void> {
+  return invoke("unlink_voice_pack_folder", { pack });
+}
+
+/** Pick a folder of `{key}.wav` files and merge them into a pack; null when cancelled. */
+export async function importVoicePackWavs(pack: string): Promise<VoiceImportReport | null> {
+  return invoke("import_voice_pack_wavs", { pack });
+}
+
+export async function listInputDevices(): Promise<InputDevice[]> {
+  return invoke("list_input_devices");
+}
+
+export async function startVoiceCapture(device: string): Promise<void> {
+  return invoke("start_voice_capture", { device });
+}
+
+/** Peak mic level (0-1) since the previous poll. */
+export async function getVoiceCaptureLevel(): Promise<number> {
+  return invoke("get_voice_capture_level");
+}
+
+export async function cancelVoiceCapture(): Promise<void> {
+  return invoke("cancel_voice_capture");
+}
+
+/** Stop capturing and save the take (trim, gate, normalize; keeps one undo). */
+export async function finishVoiceTake(pack: string, key: string): Promise<VoiceTakeResult> {
+  return invoke("finish_voice_take", { pack, key });
+}
+
+export async function undoVoiceTake(pack: string, key: string): Promise<boolean> {
+  return invoke("undo_voice_take", { pack, key });
+}
+
+export async function deleteVoiceClip(pack: string, key: string): Promise<void> {
+  return invoke("delete_voice_clip", { pack, key });
+}
+
+export async function listVoicePresets(): Promise<VoicePreset[]> {
+  return invoke("list_voice_presets");
+}
+
+export async function playVoiceClip(pack: string, key: string): Promise<VoicePlayReport> {
+  return invoke("play_voice_clip", { pack, key });
+}
+
+export async function playVoicePreset(pack: string, preset: string): Promise<VoicePlayReport> {
+  return invoke("play_voice_preset", { pack, preset });
+}
+
+export async function playVoiceComposition(
+  pack: string,
+  composition: VoiceComposition,
+): Promise<VoicePlayReport> {
+  return invoke("play_voice_composition", { pack, composition });
+}
+
+export async function playSpotterPlaylist(pack: string): Promise<VoicePlaylist> {
+  return invoke("play_spotter_playlist", { pack });
+}
+
+export async function getVoicePreviewStatus(): Promise<VoicePreviewStatus> {
+  return invoke("get_voice_preview_status");
+}
+
+export async function controlVoicePreview(action: VoicePreviewControl): Promise<void> {
+  return invoke("control_voice_preview", { action });
 }
 
 /* --- VR / HUD --- */
@@ -211,6 +355,16 @@ export async function openVrHudPreview(): Promise<void> {
   return invoke("open_vr_hud_preview_cmd");
 }
 
+/** Re-anchor world-locked VR widgets to the current head pose. */
+export async function recenterVr(): Promise<void> {
+  return invoke("vr_recenter_cmd");
+}
+
+/** Wait (up to 10 s) for the next wheel / button-box press; null on timeout. */
+export async function captureControllerButton(): Promise<ControllerBinding | null> {
+  return invoke("capture_controller_button_cmd");
+}
+
 /* --- Monitor overlays --- */
 
 export async function startMonitorOverlay(): Promise<void> {
@@ -231,8 +385,9 @@ export function buildOpenKneeboardUrl(settings: AppSettings, baseUrl: string): s
     standings: "standings",
     relative: "relative",
     radar: "radar",
+    trackmap: "trackmap",
   };
-  const kinds = ["coach", "standings", "relative", "radar"];
+  const kinds = ["coach", "standings", "relative", "radar", "trackmap"];
   const enabled = settings.overlayLayout.widgets
     .map((w, i) => ({ w, kind: kinds[i] }))
     .filter(({ w }) => w.enabled);

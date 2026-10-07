@@ -1,0 +1,129 @@
+# Race Refinery coach phrase registry: every clip a voice pack can provide.
+#
+# `[tier category]` opens a section; each line below it is `key=prompt`, where the
+# prompt is what the speaker says into the mic. Tiers:
+#   spotter  - stand-alone radio lines (flags, traffic, race clock, fuel stock calls)
+#   engineer - numbers and glue words chained into lap times, gaps, deltas, fuel counts
+#
+# Numbers are recorded as 0-20 plus the round tens; 21-99 are spoken as tens + ones
+# (29 = n20 + n9) and 100+ digit by digit. Keys are part of the pack format: renaming
+# one orphans that clip in every existing pack.
+
+[spotter intro]
+intro_online=Race Refinery coach online.
+intro_good_luck=Good luck.
+
+[spotter flags]
+flag_green=Green flag. Go.
+flag_yellow=Yellow. Caution.
+flag_yellow_waving=Waving yellow.
+flag_blue=Blue. Faster car.
+flag_white=White flag. Last lap.
+flag_checkered=Checkered flag.
+flag_red=Red flag.
+flag_black=Black flag.
+
+[spotter traffic]
+pack_car_left=Car on your left.
+pack_car_right=Car on your right.
+pack_three_wide_middle=Three wide, middle.
+pack_two_left=Two cars on your left.
+pack_two_right=Two cars on your right.
+pack_clear=Clear all around.
+pack_clear_left=Clear left.
+pack_clear_right=Clear right.
+pack_approaching_ahead=Closing on traffic ahead.
+pack_approaching_behind=Car closing from behind.
+
+[spotter gaps]
+gaining_ahead=Gaining on car ahead.
+losing_ahead=Losing ground to car ahead.
+gaining_behind=Car behind is closing.
+losing_behind=Pulling away from car behind.
+
+[spotter race]
+race_five_laps=Five laps to go.
+race_final_lap=Final lap.
+race_five_minutes=Five minutes remaining.
+race_one_minute=One minute remaining.
+pits_open=Pits are open.
+incident_intro=Incident.
+tyre_hot=Tyres are running hot.
+lap_invalid=Invalid lap.
+
+[spotter fuel]
+fuel_good_to_finish=Fuel is good to the finish.
+fuel_one_more_stop=Fuel to the finish, with a lap to spare.
+fuel_low=Fuel low.
+fuel_pit_this_lap=Pit this lap or next.
+fuel_short_on_fuel=Short on fuel.
+fuel_plan_stop=Plan a stop.
+
+[engineer pace]
+lap=Lap.
+sector=Sector.
+out_lap=Out lap.
+versus_previous_lap=Versus previous lap.
+off_session_best=Off session best.
+pb_new=New personal best.
+pb_sector=New best sector.
+pace_on_pb=On personal best pace.
+pace_matching_best=Matching your best.
+pace_off_pb_intro=Off best pace.
+
+[engineer gaps]
+gap_ahead=Gap ahead.
+gap_behind=Gap behind.
+position_up=Up to position.
+position_down=Dropped to position.
+
+[engineer numbers]
+n0=Zero
+n1=One
+n2=Two
+n3=Three
+n4=Four
+n5=Five
+n6=Six
+n7=Seven
+n8=Eight
+n9=Nine
+n10=Ten
+n11=Eleven
+n12=Twelve
+n13=Thirteen
+n14=Fourteen
+n15=Fifteen
+n16=Sixteen
+n17=Seventeen
+n18=Eighteen
+n19=Nineteen
+n20=Twenty
+n30=Thirty
+n40=Forty
+n50=Fifty
+n60=Sixty
+n70=Seventy
+n80=Eighty
+n90=Ninety
+
+[engineer glue]
+point=Point
+minute=Minute
+minutes=Minutes
+oh=Oh
+second=Second
+seconds=Seconds
+tenth=Tenth
+tenths=Tenths
+faster=Faster
+slower=Slower
+position=Position
+fuel=Fuel
+liter=Liter
+liters=Liters
+laps=Laps
+about=About
+short=Short
+of_fuel=Of fuel
+limit=Limit is

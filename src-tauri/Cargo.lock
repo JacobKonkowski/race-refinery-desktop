@@ -2726,7 +2726,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pitwall-desktop"
+name = "race-refinery-desktop"
 version = "0.1.0"
 dependencies = [
  "anyhow",

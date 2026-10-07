@@ -1,6 +1,6 @@
 # Third-party notices
 
-PitWall Desktop is MIT-licensed (see [LICENSE](LICENSE)). It redistributes
+Race Refinery is MIT-licensed (see [LICENSE](LICENSE)). It redistributes
 dependencies from crates.io and npm.
 
 ## Generating this file
@@ -12,7 +12,7 @@ npm run gen:notice
 Or manually:
 
 ```powershell
-cargo tree -p pitwall-desktop --prefix none | Sort-Object -Unique
+cargo tree -p race-refinery-desktop --prefix none | Sort-Object -Unique
 npm ls --all --parseable
 ```
 

@@ -17,6 +17,8 @@ export interface SessionSummary {
   /** Fastest pace-eligible lap, if any. */
   bestLapMs: number | null;
   importedAt: string;
+  /** Session type of the latest sub-session (by session number), e.g. "Race". */
+  sessionType: string;
 }
 
 export interface SectorTime {
@@ -47,6 +49,13 @@ export interface LapSummary {
   rfTemp: number | null;
   lrTemp: number | null;
   rrTemp: number | null;
+  /** Mean tire pressures (kPa); null before schema v9 / without channel. */
+  lfPressure: number | null;
+  rfPressure: number | null;
+  lrPressure: number | null;
+  rrPressure: number | null;
+  /** True when the lap has at least one sparse traffic event. */
+  hasTraffic: boolean;
   sectors: SectorTime[];
   /** Delta to the fastest pace-eligible lap in this sub-session. */
   deltaToBestMs: number | null;
@@ -60,10 +69,29 @@ export interface SessionDetail {
 export interface TracePoint {
   distPct: number;
   speed: number;
+  /** Applied pedals (after auto-blip / TC / ABS). */
   throttle: number;
   brake: number;
+  /** Driver pedals; `null` for sessions imported before v5 traces or sources without the channel. */
+  throttleRaw: number | null;
+  brakeRaw: number | null;
+  clutch: number | null;
+  clutchRaw: number | null;
+  handbrakeRaw: number | null;
+  /** `BrakeABSactive`; `null` for sessions imported before v6 traces. */
+  absActive: boolean | null;
   gear: number;
   steering: number;
+  /** GPS at this sample; `null` for sessions imported before v3 traces. */
+  lat: number | null;
+  lon: number | null;
+  /** ms since the lap's first frame; `null` for sessions imported before v4 traces. */
+  elapsedMs: number | null;
+  /** Engine RPM; `null` before schema v7. */
+  rpm: number | null;
+  latAccel: number | null;
+  longAccel: number | null;
+  yawRate: number | null;
 }
 
 export interface LapTrace {
@@ -108,8 +136,92 @@ export interface AlignedPoint {
   referenceGear: number | null;
   candidateSteering: number | null;
   referenceSteering: number | null;
-  /** Optional backend cumulative time delta (ms). Client may approximate if absent. */
-  cumulativeDeltaMs?: number | null;
+  candidateClutch: number | null;
+  referenceClutch: number | null;
+  candidateRpm: number | null;
+  referenceRpm: number | null;
+  candidateLatAccel: number | null;
+  referenceLatAccel: number | null;
+  candidateLongAccel: number | null;
+  referenceLongAccel: number | null;
+  candidateYawRate: number | null;
+  referenceYawRate: number | null;
+  /** Running gap (candidate − reference, ms); `null` where either lap has no time curve. */
+  cumulativeDeltaMs: number | null;
+}
+
+export interface TrafficEvent {
+  distPct: number;
+  kind: string;
+}
+
+/** "recorded" = both laps carry elapsed time; "estimated" = integrated from speed. */
+export type TimingSource = "recorded" | "estimated";
+
+/** Candidate vs reference through one corner. Positive = candidate slower / later. */
+export interface CornerDelta {
+  /** 1-based in track order; detected from speed, not the official turn numbers. */
+  number: number;
+  entryPct: number;
+  apexPct: number;
+  exitPct: number;
+  /** Time through this reference-defined window on each lap's timeline. */
+  candidateTimeMs: number | null;
+  referenceTimeMs: number | null;
+  /** Candidate − reference through the corner; + = slower. */
+  timeDeltaMs: number;
+  entryDeltaMs: number;
+  exitDeltaMs: number;
+  /** m/s */
+  candidateMinSpeed: number | null;
+  referenceMinSpeed: number | null;
+  /** Positive = candidate braked later. */
+  brakePointDeltaM: number | null;
+  /** Positive = candidate reached full throttle later. */
+  throttlePointDeltaM: number | null;
+  candidate: CornerTechnique;
+  reference: CornerTechnique;
+}
+
+/** How one lap drove one corner (driver pedals, own timeline). */
+export interface CornerTechnique {
+  /** `null` when the lap has no `BrakeABSactive` (imported before schema v6). */
+  absMs: number | null;
+  /** 0..1; `null` when the lap didn't brake for the corner. */
+  peakBrake: number | null;
+  trailBrakeMs: number | null;
+  coastMs: number;
+  /** `null` when taken flat or full throttle never comes before the exit. */
+  apexToThrottleMs: number | null;
+}
+
+export type LapRole = "candidate" | "reference";
+export type AssistKind = "abs";
+
+/** A stretch of lap distance where ABS intervened. */
+export interface AssistSpan {
+  lap: LapRole;
+  kind: AssistKind;
+  startPct: number;
+  endPct: number;
+}
+
+/** One lap through one corner, relative to the reference lap. */
+export interface ConsistencyPoint {
+  lapId: number;
+  /** Metres after the reference brake point (negative = earlier). */
+  brakeOffsetM: number | null;
+  timeDeltaMs: number;
+  /** m/s */
+  minSpeed: number | null;
+}
+
+/** Every clean lap through one of the reference lap's corners (`corner_consistency`). */
+export interface CornerConsistency {
+  number: number;
+  apexPct: number;
+  brakeSpreadM: number | null;
+  points: ConsistencyPoint[];
 }
 
 export interface LapComparison {
@@ -120,6 +232,13 @@ export interface LapComparison {
   deltaMs: number | null;
   sectorDeltas: SectorDelta[];
   series: AlignedPoint[];
+  corners: CornerDelta[];
+  /** Where ABS intervened on either lap. */
+  assists: AssistSpan[];
+  candidateTraffic: TrafficEvent[];
+  referenceTraffic: TrafficEvent[];
+  timing: TimingSource | null;
+  trackLengthM: number | null;
 }
 
 /* --- Live telemetry --- */
@@ -182,6 +301,18 @@ export interface LiveSnapshot {
   fuelLevel: number;
   speed: number;
   lapDistPct: number;
+  /** Applied pedals (after auto-blip / TC / ABS). */
+  throttle: number;
+  brake: number;
+  /** Driver pedals; `null` when the sim omits the channel. */
+  throttleRaw: number | null;
+  brakeRaw: number | null;
+  clutch: number | null;
+  clutchRaw: number | null;
+  handbrakeRaw: number | null;
+  /** Player GPS when the sim provides it. */
+  lat: number | null;
+  lon: number | null;
   currentSector: number;
   sectorBoundaries: number[];
   sectors: LiveSectorProgress[];
@@ -207,15 +338,67 @@ export interface LiveSnapshot {
   onTrack: boolean;
 }
 
-export type WidgetKind = "coach" | "standings" | "relative" | "radar";
 
-export const WIDGET_KINDS: WidgetKind[] = ["coach", "standings", "relative", "radar"];
+/** One outline vertex: lap fraction plus position in a `0 0 1 1` viewBox. */
+export interface OutlinePoint {
+  pct: number;
+  x: number;
+  y: number;
+}
+
+/** Maps GPS degrees into an outline's unit box; mirrors `TrackProjection`. */
+export interface TrackProjection {
+  originLat: number;
+  originLon: number;
+  minX: number;
+  minY: number;
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+/** Circuit outline generated from IBT GPS samples (`get_track_map`). */
+export interface TrackOutline {
+  track: string;
+  points: OutlinePoint[];
+  /** Closed SVG path over a `0 0 1 1` viewBox. */
+  svgPath: string;
+  /** Lap fraction spanned by the source samples. */
+  coverage: number;
+  /** GPS samples the outline was built from. */
+  sampleCount: number;
+  /** Absent on outlines cached before racing lines; GPS cannot be placed then. */
+  projection?: TrackProjection | null;
+}
+
+/** Minimum shape needed to draw a pedal-colored path (a `TracePoint` fits). */
+export interface TrailSample {
+  distPct: number;
+  throttle: number;
+  brake: number;
+  /** Driver pedals; pedal coloring prefers these over applied when present. */
+  throttleRaw?: number | null;
+  brakeRaw?: number | null;
+  lat: number | null;
+  lon: number | null;
+}
+
+export type WidgetKind = "coach" | "standings" | "relative" | "radar" | "trackmap";
+
+export const WIDGET_KINDS: WidgetKind[] = [
+  "coach",
+  "standings",
+  "relative",
+  "radar",
+  "trackmap",
+];
 
 export const WIDGET_LABELS: Record<WidgetKind, string> = {
   coach: "Coach HUD",
   standings: "Standings",
   relative: "Relative",
   radar: "Radar",
+  trackmap: "Track Map",
 };
 
 export interface WidgetPlacement {
@@ -226,10 +409,24 @@ export interface WidgetPlacement {
   desktopY: number;
   desktopW: number;
   desktopH: number;
-  /** VR placement (meters / multipliers). */
+  /** VR anchor: fixed in the cockpit ("world") or following the head. */
+  vrLock: VrLock;
+  /** VR placement (meters / degrees / multipliers) on top of the per-kind base pose. */
+  vrOffsetX: number;
   vrOffsetY: number;
+  vrOffsetZ: number;
+  vrTiltDeg: number;
   vrScale: number;
   vrOpacity: number;
+}
+
+export type VrLock = "world" | "head";
+
+/** A DirectInput controller button (wheel, button box, ...). */
+export interface ControllerBinding {
+  deviceGuid: string;
+  deviceName: string;
+  button: number;
 }
 
 export interface OverlayLayout {
@@ -245,9 +442,13 @@ export function defaultOverlayLayout(): OverlayLayout {
     desktopY: 24,
     desktopW: 320,
     desktopH: 180,
+    vrLock: "world",
+    vrOffsetX: 0,
     vrOffsetY: 0,
-    vrScale: 1,
-    vrOpacity: 1,
+    vrOffsetZ: 0,
+    vrTiltDeg: 0,
+    vrScale: 0.55,
+    vrOpacity: 0.75,
     ...over,
   });
   return {
@@ -256,12 +457,13 @@ export function defaultOverlayLayout(): OverlayLayout {
       base({ desktopX: 24, desktopY: 244, desktopW: 320, desktopH: 300 }),
       base({ desktopX: 360, desktopY: 244, desktopW: 300, desktopH: 240 }),
       base({ desktopX: 404, desktopY: 24, desktopW: 200, desktopH: 200 }),
+      base({ desktopX: 620, desktopY: 24, desktopW: 320, desktopH: 320 }),
     ],
     fieldPaceMode: "best",
   };
 }
 
-/** User preferences persisted to `%LOCALAPPDATA%\\pitwall-desktop\\settings.json`. */
+/** User preferences persisted to `%LOCALAPPDATA%\\race-refinery\\settings.json`. */
 export interface AppSettings {
   ollamaUrl?: string;
   ollamaModel?: string;
@@ -275,10 +477,19 @@ export interface AppSettings {
   vrHudOffset: number;
   vrHudOpacity: number;
   vrRecenterHotkey: string;
+  /** Optional wheel / button-box button that recenters the VR anchor. */
+  vrRecenterButton: ControllerBinding | null;
   vrFieldPaceMode: string;
   overlayLayout: OverlayLayout;
   audioCoachEnabled: boolean;
-  audioCoachRate: number;
+  /** Active voice pack: `default` (bundled), a user pack id, or an absolute folder path. */
+  audioCoachPackId: string;
+  /** Folders linked as voice packs. */
+  audioCoachPackFolders: string[];
+  /** Voice Studio microphone name; empty = system default. */
+  audioCoachMicDevice: string;
+  /** Voice Studio jumps to the next missing phrase after each saved take. */
+  audioStudioAutoAdvance: boolean;
   audioCoachVolume: number;
   audioCoachFuelThreshold: number;
   audioPackAlertsEnabled: boolean;
@@ -291,7 +502,6 @@ export interface AppSettings {
   audioRaceClockEnabled: boolean;
   audioPitsOpenEnabled: boolean;
   audioCoachChatterLevel: "minimal" | "normal" | "verbose";
-  audioCoachVoice: string;
   audioSessionIntroEnabled: boolean;
   audioPositionCalloutsEnabled: boolean;
   audioTyreAlertsEnabled: boolean;
@@ -307,7 +517,114 @@ export interface AppSettings {
 export interface AudioCoachStatus {
   active: boolean;
   lastMessage: string;
+  /** Active voice pack reference and its completeness. */
+  packId: string;
+  packName: string;
+  spotter: TierCount;
+  engineer: TierCount;
 }
+
+/** Recorded vs total phrases in one completeness tier. */
+export interface TierCount {
+  recorded: number;
+  total: number;
+}
+
+export type PhraseTier = "spotter" | "engineer";
+
+/** A clip a voice pack can hold (`list_voice_phrases`). */
+export interface VoicePhrase {
+  key: string;
+  /** What the speaker says into the mic. */
+  prompt: string;
+  tier: PhraseTier;
+  category: string;
+}
+
+export interface VoicePackStatus {
+  /** Reference stored in `audioCoachPackId`. */
+  id: string;
+  name: string;
+  author: string;
+  kind: "bundled" | "user" | "folder";
+  readOnly: boolean;
+  dir: string;
+  spotter: TierCount;
+  engineer: TierCount;
+  /** Phrase keys without a clip, in registry order. */
+  missing: string[];
+  /** The pack overrides the built-in radio beep. */
+  customBeep: boolean;
+}
+
+export interface VoiceImportReport {
+  imported: string[];
+  overwritten: string[];
+  unknown: string[];
+  failed: string[];
+}
+
+export interface VoicePackImport {
+  pack: VoicePackStatus;
+  report: VoiceImportReport;
+}
+
+export interface InputDevice {
+  name: string;
+  isDefault: boolean;
+}
+
+export interface VoiceTakeResult {
+  key: string;
+  durationMs: number;
+  /** Raw input peak (0-1) before normalization. */
+  inputPeak: number;
+  warnings: string[];
+}
+
+/** What a coach test or soundboard callout played; `missing` clips were skipped. */
+export interface VoicePlayReport {
+  text: string;
+  missing: string[];
+}
+
+export interface VoicePreset {
+  id: string;
+  label: string;
+}
+
+/** Soundboard composer input; each set field adds its callout. */
+export interface VoiceComposition {
+  radioBeep?: boolean;
+  lap?: number;
+  lapTimeMs?: number;
+  sector?: number;
+  sectorTimeMs?: number;
+  deltaMs?: number;
+  position?: number;
+  gapAheadS?: number;
+  gapBehindS?: number;
+  fuelLiters?: number;
+  fuelLaps?: number;
+  incidents?: number;
+  incidentLimit?: number;
+  number?: number;
+}
+
+export interface VoicePlaylist {
+  keys: string[];
+  missing: string[];
+}
+
+export interface VoicePreviewStatus {
+  playing: boolean;
+  paused: boolean;
+  index: number;
+  total: number;
+  text: string;
+}
+
+export type VoicePreviewControl = "pause" | "resume" | "skip" | "stop";
 
 export interface MonitorOverlayStatus {
   active: boolean;
@@ -346,11 +663,4 @@ export interface VrLayerDiagnostics {
   iracingOpenXrVrMode: number | null;
   iracingOpenXrEnabled: boolean | null;
   issues: string[];
-}
-
-export interface TtsVoiceInfo {
-  displayName: string;
-  language: string;
-  gender: string;
-  neural: boolean;
 }

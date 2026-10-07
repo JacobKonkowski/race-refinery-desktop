@@ -1,0 +1,3 @@
+LIBRARY race-refinery-openxr-layer
+EXPORTS
+    xrNegotiateLoaderApiLayerInterface

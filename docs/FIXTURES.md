@@ -1,7 +1,7 @@
 # Synthetic fixtures & bring-your-own IBT
 
-PitWall unit tests do **not** require a real iRacing recording. Analysis and
-cleanup tests build `RawFrame` values in memory (see `pitwall-analysis` /
+Race Refinery unit tests do **not** require a real iRacing recording. Analysis and
+cleanup tests build `RawFrame` values in memory (see `race-refinery-analysis` /
 `src-tauri` analysis tests).
 
 ## Bring your own IBT
@@ -17,5 +17,5 @@ is added later, document its size and generation script here.
 
 ## Generator (dev)
 
-Use `cargo test -p pitwall-analysis` (or `cargo test --lib` in the desktop
+Use `cargo test -p race-refinery-analysis` (or `cargo test --lib` in the desktop
 package) to exercise segmentation, sectors, and A/B/C cleanup without files.

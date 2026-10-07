@@ -7,9 +7,11 @@ interface Props {
   session: SessionSummary;
   stats: SessionStats;
   sessionTypes: string[];
+  onReimport: () => void;
+  reimporting: boolean;
 }
 
-export function SessionHeader({ session, stats, sessionTypes }: Props) {
+export function SessionHeader({ session, stats, sessionTypes, onReimport, reimporting }: Props) {
   const consistency =
     stats.consistencyMs == null
       ? "—"
@@ -22,6 +24,14 @@ export function SessionHeader({ session, stats, sessionTypes }: Props) {
         <div className="muted">{session.car || "Unknown car"}</div>
         <div className="muted sh-ibt" title={session.ibtPath}>
           {truncateIbtName(session.ibtPath)}
+          <button
+            className="btn btn-ghost sh-reimport"
+            onClick={onReimport}
+            disabled={reimporting}
+            title="Re-analyze this session's IBT with the latest Race Refinery analysis"
+          >
+            {reimporting ? "Re-importing…" : "Re-import"}
+          </button>
         </div>
       </div>
       <div className="sh-facts">
@@ -39,6 +49,7 @@ export function SessionHeader({ session, stats, sessionTypes }: Props) {
           label="Theo. best"
           value={formatLapTime(stats.theoreticalBestMs)}
           accent={stats.theoreticalBestMs != null}
+          title="Stitched best pace-eligible sectors (not a driven lap)"
         />
         <Fact label="Consistency" value={consistency} />
       </div>
@@ -46,9 +57,19 @@ export function SessionHeader({ session, stats, sessionTypes }: Props) {
   );
 }
 
-function Fact({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function Fact({
+  label,
+  value,
+  accent,
+  title,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+  title?: string;
+}) {
   return (
-    <div className="fact">
+    <div className="fact" title={title}>
       <span className="fact-label">{label}</span>
       <span className={`fact-value${accent ? " accent" : ""}`}>{value}</span>
     </div>

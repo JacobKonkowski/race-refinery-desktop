@@ -31,6 +31,9 @@ target/
 openxr-layer/build/
 src-tauri/resources/openxr-layer/*.dll
 
+# Retired Piper voice folder left in older checkouts (~78 MB); safe to delete
+src-tauri/resources/audio/coach/piper/
+
 # Local env
 .env
 .env.*

@@ -139,6 +139,81 @@
 .pw-radar-me { width: 14px; height: 14px; background: var(--pw-hero); top: 50%; }
 .pw-radar-car { width: 11px; height: 11px; background: var(--pw-warn); }
 
+.pw-trackmap { width: 100%; height: 100%; min-height: 140px; }
+.pw-trackmap svg { width: 100%; height: 100%; overflow: visible; }
+/* `--pw-map-k` (set on the svg) thins strokes as an interactive map zooms in. */
+/* Quiet asphalt underlay; thin GPS / pedal strokes sit on top. */
+.pw-trackmap-ribbon {
+  fill: none;
+  stroke: rgba(38, 45, 58, 0.85);
+  stroke-width: calc(0.04 * var(--pw-map-k, 1));
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  opacity: 0.35;
+}
+.pw-trackmap-start {
+  fill: none;
+  stroke: rgba(232, 255, 243, 0.85);
+  stroke-width: calc(0.004 * var(--pw-map-k, 1));
+  stroke-linecap: square;
+}
+/* Pedal zones: thin line on top of the ribbon. */
+.pw-trackmap-pedal {
+  fill: none;
+  stroke-width: calc(0.008 * var(--pw-map-k, 1));
+  stroke-linejoin: round;
+}
+.pw-trackmap-pedal.brake { stroke: var(--pw-slow, #ff6b6b); }
+.pw-trackmap-pedal.throttle { stroke: var(--pw-fast, #5dffa8); }
+.pw-trackmap-pedal.coast { stroke: var(--pw-warn, #ffb347); opacity: 0.5; }
+/* Racing lines keep the compare chart's candidate / reference colors. */
+.pw-trackmap-line {
+  fill: none;
+  stroke-width: calc(0.006 * var(--pw-map-k, 1));
+  stroke-linejoin: round;
+}
+.pw-trackmap-line.candidate { stroke: #4aa3ff; }
+.pw-trackmap-line.reference { stroke: #d29922; }
+.pw-trackmap-marker {
+  fill: none;
+  stroke: var(--pw-hero, #e8fff3);
+  stroke-width: calc(0.01 * var(--pw-map-k, 1));
+}
+.pw-trackmap-car { fill: var(--pw-warn, #ffb347); }
+.pw-trackmap-car.pit { fill: var(--pw-glow-dim, rgba(93, 255, 168, 0.55)); opacity: 0.55; }
+.pw-trackmap-me { fill: var(--pw-hero, #e8fff3); }
+.pw-trackmap-empty {
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--pw-glow-dim, rgba(93, 255, 168, 0.55));
+}
+.pw-trackmap-hint { font-size: 11px; opacity: 0.8; }
+/* Analyze: zoomed content must stay inside the frame. */
+.pw-trackmap-interactive { position: relative; overflow: hidden; }
+.pw-trackmap-interactive svg {
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.pw-trackmap-interactive.dragging svg { cursor: grabbing; }
+.pw-trackmap-reset {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: var(--pw-hero, #e8fff3);
+  background: rgba(18, 22, 31, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.pw-trackmap-reset:hover { background: rgba(38, 45, 58, 0.95); }
+
 /* ---- Monitor host shell ---- */
 .monitor-shell {
   box-sizing: border-box;

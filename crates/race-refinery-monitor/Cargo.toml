@@ -1,0 +1,14 @@
+[package]
+name = "race-refinery-monitor"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Desktop monitor overlay windows for Race Refinery widgets"
+
+[dependencies]
+race-refinery-settings = { path = "../race-refinery-settings" }
+parking_lot = "0.12"
+serde = { version = "1", features = ["derive"] }
+tauri = { version = "2", features = [] }
+tracing = "0.1"
