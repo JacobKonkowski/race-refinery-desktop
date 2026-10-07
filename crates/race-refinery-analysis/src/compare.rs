@@ -244,11 +244,7 @@ fn interp_opt(
         return None;
     }
     let idx = points.partition_point(|p| p.dist_pct <= x);
-    let lo = if idx == 0 {
-        first
-    } else {
-        &points[idx - 1]
-    };
+    let lo = if idx == 0 { first } else { &points[idx - 1] };
     let hi = if idx >= points.len() {
         last
     } else {

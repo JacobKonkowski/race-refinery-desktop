@@ -18,7 +18,11 @@ pub struct TrafficSample {
 }
 
 /// Collapse nearby samples into sparse [`TrafficEvent`]s for one lap.
-pub fn events_for_lap(samples: &[TrafficSample], session_num: i32, iracing_lap: i32) -> Vec<TrafficEvent> {
+pub fn events_for_lap(
+    samples: &[TrafficSample],
+    session_num: i32,
+    iracing_lap: i32,
+) -> Vec<TrafficEvent> {
     let mut hits: Vec<f64> = samples
         .iter()
         .filter(|s| s.session_num == session_num && s.lap == iracing_lap && s.nearby)
@@ -52,12 +56,7 @@ pub fn lap_gap(a: f32, b: f32) -> f32 {
 }
 
 /// Whether any other car (not in pits, valid dist) is within [`NEARBY_PCT`] of the player.
-pub fn field_nearby(
-    player_idx: i32,
-    player_pct: f32,
-    field_pct: &[f32],
-    on_pit: &[bool],
-) -> bool {
+pub fn field_nearby(player_idx: i32, player_pct: f32, field_pct: &[f32], on_pit: &[bool]) -> bool {
     if !(0.0..1.0).contains(&player_pct) {
         return false;
     }
