@@ -9,7 +9,7 @@
 //! This module performs no I/O and has no Tauri dependency.
 
 /// One telemetry sample. Field names map directly to iRacing SDK channels.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct RawFrame {
     /// `SessionNum` — iRacing sub-session index (practice / qualify / race each
     /// have their own number).
@@ -41,6 +41,14 @@ pub struct RawFrame {
     pub steering: f32,
     /// `Gear`.
     pub gear: i32,
+    /// `RPM` — engine revolutions per minute.
+    pub rpm: Option<f32>,
+    /// `LatAccel` — lateral acceleration (m/s²).
+    pub lat_accel: Option<f32>,
+    /// `LongAccel` — longitudinal acceleration (m/s²).
+    pub long_accel: Option<f32>,
+    /// `YawRate` — rad/s.
+    pub yaw_rate: Option<f32>,
     /// `FuelLevel` — liters.
     pub fuel_level: f32,
     /// `OnPitRoad` — between the pit cones.
@@ -68,6 +76,11 @@ pub struct RawFrame {
     pub lr_temp: f32,
     /// `RRtempM`.
     pub rr_temp: f32,
+    /// Tire pressures (kPa). `None` when the IBT omits the channel.
+    pub lf_pressure: Option<f32>,
+    pub rf_pressure: Option<f32>,
+    pub lr_pressure: Option<f32>,
+    pub rr_pressure: Option<f32>,
 }
 
 /// A sector split line from the session YAML `SplitTimeInfo.Sectors[]`.

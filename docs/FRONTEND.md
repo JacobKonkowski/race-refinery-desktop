@@ -13,13 +13,13 @@ src/
   shell/           AppShell, FeatureNav
   features/
     registry.ts    Feature[] — Analyze, Live, Voice Studio, Settings
-    analyze/       AnalyzePage, browser, laps, compare, insights, fuel…
+    analyze/       AnalyzePage (Compare beside the map), browser, laps, compare toggles, corner table, track map (Pedals/Lines), fuel…
     live/          LivePage, SessionLeaderboard
     voice-studio/  VoiceStudioPage, RecordTab, PreviewTab
     settings/      SettingsPage, VoicePackSection
   monitor/         Transparent overlay window entry
   shared/          api.ts, types.ts, format, toast, navigation, TierBadges
-  widgets/         Coach, Standings, Relative, Radar + widgets.css
+  widgets/         Coach, Standings, Relative, Radar, TrackMapWidget + widgets.css
   styles/          tokens.css, app.css
 ```
 

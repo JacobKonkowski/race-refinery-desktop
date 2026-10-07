@@ -6,14 +6,15 @@ Race Refinery exposes features via `src/features/registry.ts`: **Analyze**, **Li
 
 | Capability | Notes |
 |------------|--------|
-| Session browser | Lists imported IBTs; search by track/car/date; sort by date/car/track; hide sessions with no pace-eligible laps; shows a color-coded session-type letter (R/Q/P/T) per session; delete per session |
+| Session browser | Lists imported IBTs; search by track/car/date; sort by date/car/track; hides no-pace-eligible sessions by default (checkbox to show them); shows a color-coded session-type letter (R/Q/P/T) per session; delete per session |
 | Import | File / folder pickers; folder watcher auto-import |
 | Config tip | Reminds when disk recording looks disabled |
-| Lap table | Session type grouping; sectors; `paceEligible` (official time + both `_OK` flags + near-full coverage) |
-| Compare | Two-lap traces, running time delta, and a **corner table** (time lost per corner split into entry/exit, brake-point and full-throttle deltas in metres, minimum speeds) via `compare_laps`. Clicking a corner row expands the **corner detail**. Throttle / brake charts shade where TC and ABS intervened. |
+| Workspace | Compare + track map as the hero row; lap picker below (all laps by default; optional Pace-only filter); Fuel/tires collapsed |
+| Lap table | Shows all loaded laps by default; session type grouping; sectors; `paceEligible`; optional tire columns; traffic tags |
+| Compare | Distance-aligned traces with **trace toggles** (Δ, speed, pedals, gear, RPM, clutch, steering, lat/long G, yaw). Corner table shows each lap’s absolute time through the corner plus Δ vs reference (+ = slower); expand a row for technique. Brake chart shades ABS from the sim channel. |
 | Re-import | Session header / sidebar buttons re-analyze IBTs still on disk with the latest pipeline (`reimport_session_cmd`) |
-| Fuel / tire panels | From stored lap aggregates |
-| Insights strip | Deterministic client-side bullets from your laps |
+| Fuel / tires | Fuel use, tire temps, and pressures (secondary section) |
+| Insights | Session insights strip (stdev, sector gap, fuel vs median) |
 
 Phantom reset buckets and sticky duplicate lap times are cleaned in the analysis pipeline (and when loading older sessions). See [ANALYSIS.md](ANALYSIS.md).
 
@@ -21,10 +22,10 @@ Phantom reset buckets and sticky duplicate lap times are cleaned in the analysis
 
 Clicking a corner row expands a detail panel:
 
-- **Technique** — for candidate and reference: ABS time, TC time, peak brake, trail-braking time, coasting time, and apex-to-full-throttle time (definitions in [ANALYSIS.md](ANALYSIS.md#corner-technique)).
-- **Brake-point consistency** — a scatter of every complete, non-pit lap in the reference's sub-session: brake point relative to the reference (metres) against time through the corner. Candidate and reference are highlighted, and the header shows the spread. It answers whether braking later actually gained time here. Laps that lost over 3 s (spins, offs) are hidden and counted.
+- **Technique** — for candidate and reference: ABS time, peak brake, trail-braking time, coasting time, and apex-to-full-throttle time (definitions in [ANALYSIS.md](ANALYSIS.md#corner-technique)).
+- **Brake-point consistency** — a scatter of every complete, non-pit lap in the reference's sub-session: brake point relative to the reference (metres) against time through the corner. Candidate and reference are highlighted, and the header shows the spread. It shows how brake point and corner time vary together across clean laps, not that a later brake caused the time. Laps that lost over 3 s (spins, offs) are hidden and counted.
 
-The Compare throttle chart shades where **traction control** held throttle below the driver's pedal, and the brake chart shades where **ABS** was active, in each lap's color. Hovering a shaded stretch names the aid in the tooltip. ABS needs a session imported under schema v6 and TC under v5; re-import older sessions for assist data. Cars without driver aids show zero.
+The Compare brake chart shades where **ABS** was active (`BrakeABSactive`), in each lap's color. Hovering a shaded stretch names it in the tooltip. ABS needs a session imported under schema v6; re-import older sessions for assist data. Cars without ABS show zero.
 
 ## Live
 
@@ -60,5 +61,4 @@ Records and checks voice packs for the coach (see [VOICE_PACKS.md](VOICE_PACKS.m
 
 ## Track map
 
-Circuit outline derived from IBT GPS, shown in Analyze (pedal zones / racing lines),
-the monitor overlay slot, Live preview, and the VR/OpenKneeboard `trackmap` layout.
+Circuit outline derived from IBT GPS as a quiet ribbon. Pedals mode colors it from driver pedals; Lines mode draws both GPS paths with mild lateral exaggeration so on-track position reads, and Analyze selects Lines when both laps have GPS. A start/finish line crosses the track at lap distance 0. Also used in the monitor overlay slot, Live preview, and the VR/OpenKneeboard `trackmap` layout.

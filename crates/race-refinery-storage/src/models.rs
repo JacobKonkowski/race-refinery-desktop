@@ -57,6 +57,13 @@ pub struct LapSummary {
     pub rf_temp: Option<f64>,
     pub lr_temp: Option<f64>,
     pub rr_temp: Option<f64>,
+    /// Mean tire pressures (kPa); `null` before schema v9 / without channel.
+    pub lf_pressure: Option<f64>,
+    pub rf_pressure: Option<f64>,
+    pub lr_pressure: Option<f64>,
+    pub rr_pressure: Option<f64>,
+    /// True when the lap has at least one sparse traffic event.
+    pub has_traffic: bool,
     pub sectors: Vec<SectorTime>,
     /// Delta to the fastest pace-eligible lap in this sub-session.
     pub delta_to_best_ms: Option<f64>,

@@ -102,32 +102,10 @@ mod tests {
 
     fn frame(pct: f32, session_time: f64) -> RawFrame {
         RawFrame {
-            session_num: 0,
             lap: 1,
             lap_dist_pct: pct,
-            speed: 0.0,
-            throttle: 0.0,
-            brake: 0.0,
-            throttle_raw: None,
-            brake_raw: None,
-            clutch: None,
-            clutch_raw: None,
-            handbrake_raw: None,
-            abs_active: None,
-            steering: 0.0,
-            gear: 0,
-            fuel_level: 0.0,
-            on_pit_road: false,
             session_time,
-            lap_last_lap_time: None,
-            delta_best_ok: None,
-            delta_session_best_ok: None,
-            lat: None,
-            lon: None,
-            lf_temp: 0.0,
-            rf_temp: 0.0,
-            lr_temp: 0.0,
-            rr_temp: 0.0,
+            ..Default::default()
         }
     }
 

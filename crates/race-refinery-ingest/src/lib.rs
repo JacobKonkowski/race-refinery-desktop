@@ -7,6 +7,7 @@ pub mod ibt_importer;
 pub mod import_runner;
 pub mod path_policy;
 pub mod post_session;
+pub mod traffic_sampler;
 pub mod watcher;
 
 pub use config_check::{check_iracing_config, default_telemetry_dir};

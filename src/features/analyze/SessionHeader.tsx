@@ -49,6 +49,7 @@ export function SessionHeader({ session, stats, sessionTypes, onReimport, reimpo
           label="Theo. best"
           value={formatLapTime(stats.theoreticalBestMs)}
           accent={stats.theoreticalBestMs != null}
+          title="Stitched best pace-eligible sectors (not a driven lap)"
         />
         <Fact label="Consistency" value={consistency} />
       </div>
@@ -56,9 +57,19 @@ export function SessionHeader({ session, stats, sessionTypes, onReimport, reimpo
   );
 }
 
-function Fact({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function Fact({
+  label,
+  value,
+  accent,
+  title,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+  title?: string;
+}) {
   return (
-    <div className="fact">
+    <div className="fact" title={title}>
       <span className="fact-label">{label}</span>
       <span className={`fact-value${accent ? " accent" : ""}`}>{value}</span>
     </div>

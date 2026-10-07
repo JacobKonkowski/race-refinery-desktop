@@ -50,11 +50,6 @@ const METRICS: { label: string; title: string; value: (t: CornerTechnique) => st
     value: (t) => seconds(t.absMs),
   },
   {
-    label: "TC cutting",
-    title: "Time traction control held throttle below the driver's pedal",
-    value: (t) => seconds(t.tcMs),
-  },
-  {
     label: "Peak brake",
     title: "Highest brake pedal before the reference apex",
     value: (t) => (t.peakBrake == null ? "—" : `${Math.round(t.peakBrake * 100)}%`),
@@ -85,49 +80,48 @@ export function CornerDetail({
   referenceLapId,
 }: Props) {
   const missingAssists =
-    corner.candidate.absMs == null ||
-    corner.reference.absMs == null ||
-    corner.candidate.tcMs == null ||
-    corner.reference.tcMs == null;
+    corner.candidate.absMs == null || corner.reference.absMs == null;
 
   return (
     <div className="corner-detail">
-      <table className="data-table corner-technique">
-        <thead>
-          <tr>
-            <th />
-            <th className="num" style={{ color: CAND_COLOR }}>
-              Candidate
-            </th>
-            <th className="num" style={{ color: REF_COLOR }}>
-              Reference
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {METRICS.map((m) => (
-            <tr key={m.label}>
-              <td title={m.title}>{m.label}</td>
-              <td className="num">{m.value(corner.candidate)}</td>
-              <td className="num">{m.value(corner.reference)}</td>
+      <div className="corner-detail-body">
+        <table className="data-table corner-technique">
+          <thead>
+            <tr>
+              <th />
+              <th className="num" style={{ color: CAND_COLOR }}>
+                Candidate
+              </th>
+              <th className="num" style={{ color: REF_COLOR }}>
+                Reference
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      {missingAssists ? (
-        <p className="muted corner-note">
-          ABS / TC need a lap imported with driver-aid channels; re-import older sessions for
-          assist data.
-        </p>
-      ) : null}
+          </thead>
+          <tbody>
+            {METRICS.map((m) => (
+              <tr key={m.label}>
+                <td title={m.title}>{m.label}</td>
+                <td className="num">{m.value(corner.candidate)}</td>
+                <td className="num">{m.value(corner.reference)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {missingAssists ? (
+          <p className="muted corner-note">
+            ABS needs a lap imported with `BrakeABSactive` (schema v6); re-import older sessions
+            for assist data.
+          </p>
+        ) : null}
 
-      <div className="corner-consistency">
-        <ConsistencyScatter
-          state={consistency}
-          laps={laps}
-          candidateLapId={candidateLapId}
-          referenceLapId={referenceLapId}
-        />
+        <div className="corner-consistency">
+          <ConsistencyScatter
+            state={consistency}
+            laps={laps}
+            candidateLapId={candidateLapId}
+            referenceLapId={referenceLapId}
+          />
+        </div>
       </div>
     </div>
   );

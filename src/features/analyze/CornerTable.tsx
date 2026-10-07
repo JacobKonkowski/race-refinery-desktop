@@ -4,13 +4,10 @@ import { cornerConsistency } from "../../shared/api";
 import { deltaClass, formatDelta, formatSpeedKph } from "../../shared/format";
 import { CornerDetail, type ConsistencyState } from "./CornerDetail";
 import { isCleanLap, matchConsistency } from "./cornerConsistency";
+import { CAND_COLOR, REF_COLOR } from "./compareColors";
 
-/** Corners whose loss is below this are not called out as "worst". */
-const NOTABLE_LOSS_MS = 50;
-const WORST_COUNT = 3;
-/** Extra ABS / TC time on the candidate worth calling out in the insight. */
-const NOTABLE_ASSIST_MS = 150;
-const COLUMNS = 8;
+/** Corner · Cand · Ref · Δ · bar · Entry Δ · Exit Δ · Brake · Min · Throttle */
+const COLUMNS = 10;
 
 interface Props {
   corners: CornerDelta[];
@@ -22,50 +19,32 @@ interface Props {
   onHoverDistPct?: (pct: number | null) => void;
   /** Row click: zoom the track map to this corner's apex. */
   onFocusDistPct?: (pct: number) => void;
+  /** Candidate traffic hits (lap fraction) for tagging affected corners. */
+  trafficPcts?: number[];
 }
 
 type Loaded =
   | { referenceLapId: number; data: CornerConsistency[] }
   | { referenceLapId: number; error: string };
 
-/** "12 m later" / "8 m earlier" / "same"; `null` when unknown. */
+/** Absolute corner duration, e.g. `1.820s`. */
+function formatCornerTime(ms: number | null | undefined): string {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return "—";
+  return `${(ms / 1000).toFixed(3)}s`;
+}
+
+/** Signed delta with unit, e.g. `+0.184s`. */
+function formatDeltaSeconds(ms: number | null | undefined): string {
+  const d = formatDelta(ms);
+  return d === "—" ? d : `${d}s`;
+}
+
+/** "12 m later than ref" / "8 m earlier than ref" / "same"; `null` when unknown. */
 function formatMetres(m: number | null, later: string, earlier: string): string {
   if (m == null) return "—";
   const r = Math.round(m);
   if (Math.abs(r) < 2) return "same";
   return `${Math.abs(r)} m ${r > 0 ? later : earlier}`;
-}
-
-/** One-line coaching read of where a corner's time went. */
-export function cornerInsight(c: CornerDelta): string {
-  const lost = c.timeDeltaMs > 0;
-  const phase =
-    Math.abs(c.entryDeltaMs) >= Math.abs(c.exitDeltaMs) ? "entry" : "exit";
-  const seconds = (Math.abs(c.timeDeltaMs) / 1000).toFixed(3);
-  const parts = [`${lost ? "lost" : "gained"} ${seconds}s, mostly on ${phase}`];
-  if (c.brakePointDeltaM != null && Math.abs(c.brakePointDeltaM) >= 5) {
-    parts.push(`braked ${formatMetres(c.brakePointDeltaM, "later", "earlier")}`);
-  }
-  if (c.candidateMinSpeed != null && c.referenceMinSpeed != null) {
-    const kph = Math.round((c.candidateMinSpeed - c.referenceMinSpeed) * 3.6);
-    if (Math.abs(kph) >= 2) {
-      parts.push(`${Math.abs(kph)} km/h ${kph < 0 ? "slower" : "faster"} at the slowest point`);
-    }
-  }
-  if (c.throttlePointDeltaM != null && Math.abs(c.throttlePointDeltaM) >= 5) {
-    parts.push(`full throttle ${formatMetres(c.throttlePointDeltaM, "later", "earlier")}`);
-  }
-  const extra = (cand: number | null, ref: number | null) =>
-    cand != null && ref != null ? cand - ref : 0;
-  const absExtra = extra(c.candidate.absMs, c.reference.absMs);
-  if (absExtra >= NOTABLE_ASSIST_MS) {
-    parts.push(`${(absExtra / 1000).toFixed(2)}s more ABS`);
-  }
-  const tcExtra = extra(c.candidate.tcMs, c.reference.tcMs);
-  if (tcExtra >= NOTABLE_ASSIST_MS) {
-    parts.push(`${(tcExtra / 1000).toFixed(2)}s more TC`);
-  }
-  return `Corner ${c.number}: ${parts.join("; ")}.`;
 }
 
 export function CornerTable({
@@ -76,10 +55,21 @@ export function CornerTable({
   reference,
   onHoverDistPct,
   onFocusDistPct,
+  trafficPcts = [],
 }: Props) {
   const [sortByLoss, setSortByLoss] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+
+  const trafficCorners = useMemo(() => {
+    const set = new Set<number>();
+    for (const c of corners) {
+      if (trafficPcts.some((p) => p >= c.entryPct && p <= c.exitPct)) {
+        set.add(c.number);
+      }
+    }
+    return set;
+  }, [corners, trafficPcts]);
 
   const cleanLapIds = useMemo(
     () => laps.filter((l) => isCleanLap(l, reference.sessionNum)).map((l) => l.id),
@@ -105,17 +95,6 @@ export function CornerTable({
     return { status: "ready", corner: matchConsistency(c, loaded.data) };
   };
 
-  const worst = useMemo(
-    () =>
-      new Set(
-        [...corners]
-          .filter((c) => c.timeDeltaMs >= NOTABLE_LOSS_MS)
-          .sort((a, b) => b.timeDeltaMs - a.timeDeltaMs)
-          .slice(0, WORST_COUNT)
-          .map((c) => c.number),
-      ),
-    [corners],
-  );
   const rows = useMemo(
     () =>
       sortByLoss ? [...corners].sort((a, b) => b.timeDeltaMs - a.timeDeltaMs) : corners,
@@ -124,10 +103,6 @@ export function CornerTable({
   const maxAbs = useMemo(
     () => Math.max(1, ...corners.map((c) => Math.abs(c.timeDeltaMs))),
     [corners],
-  );
-  const biggest = corners.reduce<CornerDelta | null>(
-    (best, c) => (c.timeDeltaMs > (best?.timeDeltaMs ?? NOTABLE_LOSS_MS) ? c : best),
-    null,
   );
 
   if (corners.length === 0) {
@@ -138,7 +113,11 @@ export function CornerTable({
     <div className="corner-analysis">
       <div className="corner-header">
         <div className="chart-title">
-          Corners{estimated ? " (estimated timing)" : ""}
+          Corners ·{" "}
+          <span style={{ color: CAND_COLOR }}>Lap {candidate.lapNumber}</span>
+          {" vs "}
+          <span style={{ color: REF_COLOR }}>Lap {reference.lapNumber}</span>
+          {estimated ? " (estimated timing)" : ""}
         </div>
         <label className="corner-sort muted">
           <input
@@ -149,7 +128,9 @@ export function CornerTable({
           Biggest loss first
         </label>
       </div>
-      {biggest ? <p className="corner-insight">{cornerInsight(biggest)}</p> : null}
+      <p className="muted corner-caption">
+        + = slower than ref
+      </p>
       {estimated ? (
         <p className="muted corner-note">
           One of these laps was imported before Race Refinery stored lap timing, so corner
@@ -162,19 +143,54 @@ export function CornerTable({
             <th title="Detected from the reference lap's speed; may not match official turn numbers">
               Corner
             </th>
-            <th className="num">Δ time</th>
+            <th
+              className="num"
+              style={{ color: CAND_COLOR }}
+              title="Time through this corner on the candidate lap"
+            >
+              Lap {candidate.lapNumber}
+            </th>
+            <th
+              className="num"
+              style={{ color: REF_COLOR }}
+              title="Time through this corner on the reference lap"
+            >
+              Lap {reference.lapNumber}
+            </th>
+            <th
+              className="num"
+              title="Candidate − reference through this corner. + = slower than ref."
+            >
+              Δ
+            </th>
             <th className="corner-bar-col" />
-            <th className="num" title="Reference lap's slowest point → segment start">
-              Entry
+            <th
+              className="num"
+              title="Time gap from segment start to the reference’s slowest point"
+            >
+              Entry Δ
             </th>
-            <th className="num" title="Reference lap's slowest point → segment end">
-              Exit
+            <th
+              className="num"
+              title="Time gap from the reference’s slowest point to segment end"
+            >
+              Exit Δ
             </th>
-            <th className="num">Brake point</th>
+            <th
+              className="num"
+              title="How many metres later/earlier the candidate braked vs the reference"
+            >
+              Brake vs ref
+            </th>
             <th className="num" title="Slowest speed through the corner, candidate / reference">
               Min km/h
             </th>
-            <th className="num">Full throttle</th>
+            <th
+              className="num"
+              title="Metres later/earlier the candidate reached full throttle vs the reference"
+            >
+              Throttle vs ref
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -183,7 +199,6 @@ export function CornerTable({
               <tr
                 className={[
                   "corner-focusable",
-                  worst.has(c.number) ? "corner-worst" : "",
                   expanded === c.number ? "corner-expanded" : "",
                 ]
                   .filter(Boolean)
@@ -198,27 +213,45 @@ export function CornerTable({
                 }}
               >
                 <td>
+                  <span
+                    className={`corner-chevron${expanded === c.number ? " open" : ""}`}
+                    aria-hidden
+                  >
+                    ›
+                  </span>
                   C{c.number}
                   <span className="muted corner-pos"> {(c.apexPct * 100).toFixed(0)}%</span>
+                  {trafficCorners.has(c.number) ? (
+                    <span
+                      className="pill traffic"
+                      title="Another car within ~1.5% lap distance in this corner"
+                    >
+                      traffic
+                    </span>
+                  ) : null}
                 </td>
+                <td className="num">{formatCornerTime(c.candidateTimeMs)}</td>
+                <td className="num muted">{formatCornerTime(c.referenceTimeMs)}</td>
                 <td className={`num ${deltaClass(c.timeDeltaMs)}`}>
-                  {formatDelta(c.timeDeltaMs)}
+                  {formatDeltaSeconds(c.timeDeltaMs)}
                 </td>
                 <td className="corner-bar-col">
                   <DeltaBar ms={c.timeDeltaMs} maxAbs={maxAbs} />
                 </td>
                 <td className={`num ${deltaClass(c.entryDeltaMs)}`}>
-                  {formatDelta(c.entryDeltaMs)}
+                  {formatDeltaSeconds(c.entryDeltaMs)}
                 </td>
                 <td className={`num ${deltaClass(c.exitDeltaMs)}`}>
-                  {formatDelta(c.exitDeltaMs)}
+                  {formatDeltaSeconds(c.exitDeltaMs)}
                 </td>
-                <td className="num">{formatMetres(c.brakePointDeltaM, "later", "earlier")}</td>
+                <td className="num">
+                  {formatMetres(c.brakePointDeltaM, "later than ref", "earlier than ref")}
+                </td>
                 <td className="num">
                   {formatSpeedKph(c.candidateMinSpeed)} / {formatSpeedKph(c.referenceMinSpeed)}
                 </td>
                 <td className="num">
-                  {formatMetres(c.throttlePointDeltaM, "later", "earlier")}
+                  {formatMetres(c.throttlePointDeltaM, "later than ref", "earlier than ref")}
                 </td>
               </tr>
               {expanded === c.number ? (

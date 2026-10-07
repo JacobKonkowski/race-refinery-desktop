@@ -25,8 +25,6 @@ const BRAKE_ON: f64 = 0.1;
 const THROTTLE_ON: f64 = 0.9;
 /// At or below this, a pedal counts as released (matches the map's deadzone).
 const PEDAL_IDLE: f64 = 0.05;
-/// Driver throttle this far above applied, while on throttle, means TC is cutting.
-const TC_GAP: f64 = 0.05;
 /// Trail braking starts at the last sample within this fraction of peak brake.
 const TRAIL_HOLD_FRAC: f64 = 0.9;
 /// Assist runs separated by at most this many grid samples are merged; runs
@@ -245,6 +243,10 @@ pub struct CornerDelta {
     pub apex_pct: f64,
     /// Segment end (speed peak after the corner, or the compared range end).
     pub exit_pct: f64,
+    /// Time through this (reference-defined) window on the candidate timeline.
+    pub candidate_time_ms: Option<f64>,
+    /// Time through the same window on the reference timeline.
+    pub reference_time_ms: Option<f64>,
     pub time_delta_ms: f64,
     /// Share of `time_delta_ms` from entry to the reference apex.
     pub entry_delta_ms: f64,
@@ -271,9 +273,6 @@ pub struct CornerTechnique {
     /// Time with ABS reducing brake pressure. `None` when the lap has no
     /// `BrakeABSactive` channel (imported before schema v6).
     pub abs_ms: Option<f64>,
-    /// Time with traction control cutting throttle (driver throttle clearly
-    /// above applied). `None` without raw pedals (imported before schema v5).
-    pub tc_ms: Option<f64>,
     /// Highest driver brake before the reference apex; `None` if not braked.
     pub peak_brake: Option<f64>,
     /// From the last sample near peak brake to brake below 10%: how long the
@@ -297,10 +296,9 @@ pub enum LapRole {
 #[serde(rename_all = "camelCase")]
 pub enum AssistKind {
     Abs,
-    Tc,
 }
 
-/// A stretch of lap distance where a driver aid was intervening.
+/// A stretch of lap distance where ABS was intervening.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssistSpan {
@@ -341,11 +339,15 @@ pub fn analyze_corners(
             let ref_throttle = throttle_point(&refr.speed, &refr.throttle, entry, exit);
             let lifted = cand.lifted(entry, exit) || refr.lifted(entry, exit);
 
+            let candidate_time_ms = segment_ms(&cand.time, entry, exit);
+            let reference_time_ms = segment_ms(&refr.time, entry, exit);
             CornerDelta {
                 number: w.number,
                 entry_pct: grid[entry],
                 apex_pct: grid[apex],
                 exit_pct: grid[exit],
+                candidate_time_ms,
+                reference_time_ms,
                 time_delta_ms: gap[exit] - gap[entry],
                 entry_delta_ms: gap[apex] - gap[entry],
                 exit_delta_ms: gap[exit] - gap[apex],
@@ -453,9 +455,8 @@ pub(crate) struct LapLanes {
     pub throttle: Vec<f64>,
     /// Elapsed ms on this lap's own timeline.
     pub time: Vec<f64>,
-    /// `None` when the lap lacks the channels to tell.
+    /// `None` when the lap lacks the ABS channel.
     abs: Option<Vec<bool>>,
-    tc: Option<Vec<bool>>,
 }
 
 impl LapLanes {
@@ -470,21 +471,12 @@ impl LapLanes {
                 .map(|v| v >= 0.5)
                 .collect()
         });
-        let tc = points.iter().any(|p| p.throttle_raw.is_some()).then(|| {
-            // Auto-blips push applied above raw, so they never count here.
-            lane(|p| p.throttle_raw.map_or(0.0, |raw| raw - p.throttle))
-                .into_iter()
-                .zip(&throttle)
-                .map(|(cut, &driver)| driver > PEDAL_IDLE && cut > TC_GAP)
-                .collect()
-        });
         Self {
             speed: lane(|p| p.speed),
             brake: lane(TracePoint::driver_brake),
             throttle,
             time: fill(grid.iter().map(|&x| timeline.at(x))),
             abs,
-            tc,
         }
     }
 
@@ -537,7 +529,6 @@ impl LapLanes {
         };
         CornerTechnique {
             abs_ms: assist(&self.abs),
-            tc_ms: assist(&self.tc),
             peak_brake: peak.map(|i| self.brake[i]),
             trail_brake_ms,
             coast_ms: self.time_where(entry, exit, |i| {
@@ -548,18 +539,20 @@ impl LapLanes {
     }
 
     fn assist_spans(&self, lap: LapRole, grid: &[f64]) -> Vec<AssistSpan> {
-        [(AssistKind::Abs, &self.abs), (AssistKind::Tc, &self.tc)]
-            .into_iter()
-            .filter_map(|(kind, lane)| lane.as_ref().map(|on| (kind, on)))
-            .flat_map(|(kind, on)| {
-                assist_runs(on).into_iter().map(move |(a, b)| AssistSpan {
-                    lap,
-                    kind,
-                    start_pct: grid[a],
-                    end_pct: grid[b],
-                })
+        self.abs
+            .as_ref()
+            .map(|on| {
+                assist_runs(on)
+                    .into_iter()
+                    .map(|(a, b)| AssistSpan {
+                        lap,
+                        kind: AssistKind::Abs,
+                        start_pct: grid[a],
+                        end_pct: grid[b],
+                    })
+                    .collect()
             })
-            .collect()
+            .unwrap_or_default()
     }
 }
 
@@ -654,6 +647,15 @@ pub(crate) fn min_in(values: &[f64], from: usize, to: usize) -> Option<f64> {
     values[from..=to].iter().copied().reduce(f64::min)
 }
 
+/// Elapsed duration through `[entry, exit]` on a lap timeline lane.
+fn segment_ms(time: &[f64], entry: usize, exit: usize) -> Option<f64> {
+    let (Some(&t0), Some(&t1)) = (time.get(entry), time.get(exit)) else {
+        return None;
+    };
+    let ms = t1 - t0;
+    (ms.is_finite() && ms >= 0.0).then_some(ms)
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
@@ -693,17 +695,9 @@ pub(crate) mod tests {
                     speed: speed_at(d),
                     throttle: if lifted { 0.2 } else { 1.0 },
                     brake: if braking { 0.8 } else { 0.0 },
-                    throttle_raw: None,
-                    brake_raw: None,
-                    clutch: None,
-                    clutch_raw: None,
-                    handbrake_raw: None,
-                    abs_active: None,
                     gear: 4,
-                    steering: 0.0,
-                    lat: None,
-                    lon: None,
                     elapsed_ms: timed.then_some(elapsed),
+                    ..Default::default()
                 }
             })
             .collect()
@@ -791,6 +785,18 @@ pub(crate) mod tests {
 
         let mid = &corners[1];
         assert!(mid.candidate_min_speed.unwrap() < mid.reference_min_speed.unwrap());
+        // Absolute corner times match the gap-derived Δ.
+        for c in &corners {
+            let cand = c.candidate_time_ms.expect("candidate corner time");
+            let refr = c.reference_time_ms.expect("reference corner time");
+            assert!(
+                ((cand - refr) - c.time_delta_ms).abs() < 1.0,
+                "C{} abs Δ {} vs gap Δ {}",
+                c.number,
+                cand - refr,
+                c.time_delta_ms
+            );
+        }
         // Braked 1% of 5 km = 50 m earlier.
         let brake = mid.brake_point_delta_m.unwrap();
         assert!((brake + 50.0).abs() < 10.0, "brake delta {brake}");
@@ -867,49 +873,12 @@ pub(crate) mod tests {
         let abs = corner.candidate.abs_ms.unwrap();
         assert!((abs - expected).abs() < 250.0, "abs {abs} vs {expected}");
         assert_eq!(corner.reference.abs_ms, None, "no channel on reference");
-        assert_eq!(corner.candidate.tc_ms, None, "no raw throttle");
 
         assert_eq!(analysis.assists.len(), 1, "{:?}", analysis.assists);
         let span = &analysis.assists[0];
         assert_eq!((span.lap, span.kind), (LapRole::Candidate, AssistKind::Abs));
         assert!((span.start_pct - 0.47).abs() < 0.003, "{span:?}");
         assert!((span.end_pct - 0.49).abs() < 0.003, "{span:?}");
-    }
-
-    #[test]
-    fn tc_from_raw_gap_ignores_blips() {
-        let reference = lap(&[0.5], 30.0, 0.03, true);
-        let candidate: Vec<_> = reference
-            .iter()
-            .cloned()
-            .map(|mut p| {
-                let d = p.dist_pct;
-                p.throttle_raw = Some(p.throttle);
-                p.brake_raw = Some(p.brake);
-                if d > 0.48 && d < 0.49 {
-                    // Downshift blip while braking: applied above the driver's pedal.
-                    p.throttle = 0.52;
-                    p.throttle_raw = Some(0.0);
-                }
-                if d > 0.52 && d < 0.54 {
-                    // TC cutting a full-throttle exit.
-                    p.throttle = 0.6;
-                    p.throttle_raw = Some(1.0);
-                }
-                p
-            })
-            .collect();
-        let analysis = analyze_corners(&candidate, &reference, &self_delta(&reference));
-
-        let expected = time_between(&reference, 0.52, 0.54);
-        let tc = analysis.corners[0].candidate.tc_ms.unwrap();
-        assert!((tc - expected).abs() < 250.0, "tc {tc} vs {expected}");
-        assert_eq!(analysis.corners[0].reference.tc_ms, None);
-
-        assert_eq!(analysis.assists.len(), 1, "{:?}", analysis.assists);
-        let span = &analysis.assists[0];
-        assert_eq!(span.kind, AssistKind::Tc);
-        assert!(span.start_pct > 0.515 && span.end_pct < 0.545, "{span:?}");
     }
 
     #[test]

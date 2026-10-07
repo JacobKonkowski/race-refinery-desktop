@@ -23,7 +23,7 @@ export function SessionBrowser({
 }: Props) {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "car" | "track">("date");
-  const [hideEmpty, setHideEmpty] = useState(false);
+  const [hideEmpty, setHideEmpty] = useState(true);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use super::corners::{
     analyze_corners, AssistSpan, CornerAnalysis, CornerDelta, DeltaCurve, LapTimeline, TimingSource,
 };
-use super::types::TracePoint;
+use super::types::{TracePoint, TrafficEvent};
 
 /// Number of points on the shared distance grid used to align two laps.
 const GRID_POINTS: usize = 200;
@@ -23,6 +23,8 @@ pub struct CompareInput<'a> {
     pub sectors: &'a [(i32, f64)],
     /// Trace points sorted ascending by `dist_pct`.
     pub traces: &'a [TracePoint],
+    /// Sparse traffic tags for this lap (may be empty).
+    pub traffic: &'a [TrafficEvent],
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,6 +52,16 @@ pub struct AlignedPoint {
     pub reference_gear: Option<f64>,
     pub candidate_steering: Option<f64>,
     pub reference_steering: Option<f64>,
+    pub candidate_clutch: Option<f64>,
+    pub reference_clutch: Option<f64>,
+    pub candidate_rpm: Option<f64>,
+    pub reference_rpm: Option<f64>,
+    pub candidate_lat_accel: Option<f64>,
+    pub reference_lat_accel: Option<f64>,
+    pub candidate_long_accel: Option<f64>,
+    pub reference_long_accel: Option<f64>,
+    pub candidate_yaw_rate: Option<f64>,
+    pub reference_yaw_rate: Option<f64>,
     /// Running gap (candidate minus reference, ms) from the start of the range
     /// both laps cover. `None` where either lap has no time curve.
     pub cumulative_delta_ms: Option<f64>,
@@ -67,8 +79,12 @@ pub struct LapComparison {
     pub series: Vec<AlignedPoint>,
     /// Reference-lap corners in track order, with the candidate's loss in each.
     pub corners: Vec<CornerDelta>,
-    /// Where ABS / TC intervened on either lap, for shading the pedal charts.
+    /// Where ABS intervened on either lap, for shading the brake chart.
     pub assists: Vec<AssistSpan>,
+    /// Traffic hits on the candidate lap (for corner / map tags).
+    pub candidate_traffic: Vec<TrafficEvent>,
+    /// Traffic hits on the reference lap.
+    pub reference_traffic: Vec<TrafficEvent>,
     /// Where the running delta and corner times came from; `None` when either
     /// lap lacks enough trace to build a time curve.
     pub timing: Option<TimingSource>,
@@ -109,6 +125,8 @@ pub fn compare_laps(candidate: &CompareInput, reference: &CompareInput) -> LapCo
         series,
         corners,
         assists,
+        candidate_traffic: candidate.traffic.to_vec(),
+        reference_traffic: reference.traffic.to_vec(),
         timing: curve.as_ref().map(DeltaCurve::source),
         track_length_m: curve.as_ref().and_then(DeltaCurve::track_length_m),
     }
@@ -163,6 +181,16 @@ fn aligned_series(candidate: &[TracePoint], reference: &[TracePoint]) -> Vec<Ali
                 reference_gear: interp(reference, dist_pct, |p| p.gear as f64),
                 candidate_steering: interp(candidate, dist_pct, |p| p.steering),
                 reference_steering: interp(reference, dist_pct, |p| p.steering),
+                candidate_clutch: interp_opt(candidate, dist_pct, TracePoint::driver_clutch),
+                reference_clutch: interp_opt(reference, dist_pct, TracePoint::driver_clutch),
+                candidate_rpm: interp_opt(candidate, dist_pct, |p| p.rpm),
+                reference_rpm: interp_opt(reference, dist_pct, |p| p.rpm),
+                candidate_lat_accel: interp_opt(candidate, dist_pct, |p| p.lat_accel),
+                reference_lat_accel: interp_opt(reference, dist_pct, |p| p.lat_accel),
+                candidate_long_accel: interp_opt(candidate, dist_pct, |p| p.long_accel),
+                reference_long_accel: interp_opt(reference, dist_pct, |p| p.long_accel),
+                candidate_yaw_rate: interp_opt(candidate, dist_pct, |p| p.yaw_rate),
+                reference_yaw_rate: interp_opt(reference, dist_pct, |p| p.yaw_rate),
                 cumulative_delta_ms: None,
             }
         })
@@ -202,6 +230,41 @@ pub(crate) fn interp(
     Some(accessor(lo) + (accessor(hi) - accessor(lo)) * t)
 }
 
+fn interp_opt(
+    points: &[TracePoint],
+    x: f64,
+    accessor: impl Fn(&TracePoint) -> Option<f64>,
+) -> Option<f64> {
+    if points.is_empty() {
+        return None;
+    }
+    let first = points.first().unwrap();
+    let last = points.last().unwrap();
+    if x < first.dist_pct || x > last.dist_pct {
+        return None;
+    }
+    let idx = points.partition_point(|p| p.dist_pct <= x);
+    let lo = if idx == 0 { first } else { &points[idx - 1] };
+    let hi = if idx >= points.len() {
+        last
+    } else {
+        &points[idx]
+    };
+    match (accessor(lo), accessor(hi)) {
+        (Some(a), Some(b)) => {
+            let span = hi.dist_pct - lo.dist_pct;
+            if span.abs() < f64::EPSILON {
+                return Some(a);
+            }
+            let t = (x - lo.dist_pct) / span;
+            Some(a + (b - a) * t)
+        }
+        (Some(a), None) => Some(a),
+        (None, Some(b)) => Some(b),
+        (None, None) => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -210,19 +273,9 @@ mod tests {
         TracePoint {
             dist_pct: dist,
             speed,
-            throttle: 0.0,
-            brake: 0.0,
-            throttle_raw: None,
-            brake_raw: None,
-            clutch: None,
-            clutch_raw: None,
-            handbrake_raw: None,
-            abs_active: None,
             gear,
             steering,
-            lat: None,
-            lon: None,
-            elapsed_ms: None,
+            ..Default::default()
         }
     }
 
@@ -233,12 +286,14 @@ mod tests {
             lap_time_ms: Some(91_000.0),
             sectors: &[(1, 30_000.0), (2, 31_000.0), (3, 30_000.0)],
             traces: &[],
+            traffic: &[],
         };
         let refr = CompareInput {
             lap_id: 2,
             lap_time_ms: Some(90_000.0),
             sectors: &[(1, 29_500.0), (2, 31_000.0), (3, 29_500.0)],
             traces: &[],
+            traffic: &[],
         };
         let cmp = compare_laps(&cand, &refr);
         assert_eq!(cmp.delta_ms, Some(1_000.0));
@@ -254,24 +309,50 @@ mod tests {
             lap_time_ms: None,
             sectors: &[],
             traces: &[tp(0.0, 100.0, 3, 0.0), tp(1.0, 200.0, 5, 1.0)],
+            traffic: &[],
         };
         let refr = CompareInput {
             lap_id: 2,
             lap_time_ms: None,
             sectors: &[],
             traces: &[tp(0.0, 50.0, 2, -0.5), tp(1.0, 150.0, 4, 0.5)],
+            traffic: &[],
         };
         let cmp = compare_laps(&cand, &refr);
         assert_eq!(cmp.series.len(), GRID_POINTS);
-        // Midpoint should be ~150 for candidate, ~100 for reference.
         let mid = &cmp.series[GRID_POINTS / 2];
         assert!((mid.candidate_speed.unwrap() - 150.0).abs() < 2.0);
         assert!((mid.reference_speed.unwrap() - 100.0).abs() < 2.0);
-        // Gear 3→5 and 2→4 → midpoints ~4 and ~3.
         assert!((mid.candidate_gear.unwrap() - 4.0).abs() < 0.1);
         assert!((mid.reference_gear.unwrap() - 3.0).abs() < 0.1);
-        // Steering 0→1 and -0.5→0.5 → midpoints ~0.5 and ~0.0.
         assert!((mid.candidate_steering.unwrap() - 0.5).abs() < 0.05);
         assert!(mid.reference_steering.unwrap().abs() < 0.05);
+    }
+
+    #[test]
+    fn clutch_prefers_raw_when_present() {
+        let mut a = tp(0.0, 50.0, 3, 0.0);
+        a.clutch = Some(0.2);
+        a.clutch_raw = Some(0.8);
+        let mut b = tp(1.0, 50.0, 3, 0.0);
+        b.clutch = Some(0.2);
+        b.clutch_raw = Some(0.8);
+        let cand = CompareInput {
+            lap_id: 1,
+            lap_time_ms: None,
+            sectors: &[],
+            traces: &[a, b],
+            traffic: &[],
+        };
+        let refr = CompareInput {
+            lap_id: 2,
+            lap_time_ms: None,
+            sectors: &[],
+            traces: &[tp(0.0, 50.0, 3, 0.0), tp(1.0, 50.0, 3, 0.0)],
+            traffic: &[],
+        };
+        let mid = &compare_laps(&cand, &refr).series[GRID_POINTS / 2];
+        assert!((mid.candidate_clutch.unwrap() - 0.8).abs() < 1e-6);
+        assert!(mid.reference_clutch.is_none());
     }
 }

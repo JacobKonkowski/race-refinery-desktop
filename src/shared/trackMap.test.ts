@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  exaggerateLateral,
   hasRacingLine,
   pedalSegments,
   pedalTone,
   pointAt,
   projectSample,
+  startFinishSegment,
   toPathD,
   tracePath,
 } from "./trackMap";
@@ -86,16 +88,33 @@ describe("hasRacingLine", () => {
   });
 });
 
+describe("exaggerateLateral", () => {
+  it("doubles offset from the centerline", () => {
+    expect(exaggerateLateral({ x: 0.6, y: 0 }, { x: 0.5, y: 0 })).toEqual({ x: 0.7, y: 0 });
+  });
+
+  it("leaves GPS unchanged without a center", () => {
+    expect(exaggerateLateral({ x: 0.6, y: 0.1 }, null)).toEqual({ x: 0.6, y: 0.1 });
+  });
+});
+
 describe("tracePath", () => {
-  it("uses GPS when present", () => {
+  it("uses GPS when present (on-centerline stays put)", () => {
     const path = tracePath(outline, [
       sample({ distPct: 0, lat: 0, lon: 0 }),
-      sample({ distPct: 0.5, lat: 0, lon: 1 }),
+      sample({ distPct: 0.25, lat: 0, lon: 1 }),
     ]);
     expect(path).toEqual([
       { x: 0, y: 0 },
       { x: 1, y: 0 },
     ]);
+  });
+
+  it("exaggerates GPS offset from the outline centerline", () => {
+    // At distPct 0 the centerline is (0,0); lon=0.25 projects to (0.25, 0).
+    // 2× exaggeration → (0.5, 0).
+    const path = tracePath(outline, [sample({ distPct: 0, lat: 0, lon: 0.25 })]);
+    expect(path).toEqual([{ x: 0.5, y: 0 }]);
   });
 
   it("falls back to lap distance without GPS", () => {
@@ -153,6 +172,22 @@ describe("pedalSegments", () => {
   it("drops single-point runs and empty input", () => {
     expect(pedalSegments(outline, [sample()])).toEqual([]);
     expect(pedalSegments(outline, [])).toEqual([]);
+  });
+});
+
+describe("startFinishSegment", () => {
+  it("crosses the start point perpendicular to the outline", () => {
+    // Square runs +x from (0,0); perpendicular is vertical through the origin.
+    const seg = startFinishSegment(square, 0.1);
+    expect(seg).not.toBeNull();
+    expect(seg!.x1).toBeCloseTo(0, 5);
+    expect(seg!.x2).toBeCloseTo(0, 5);
+    expect(Math.abs(seg!.y2 - seg!.y1)).toBeCloseTo(0.2, 5);
+    expect((seg!.y1 + seg!.y2) / 2).toBeCloseTo(0, 5);
+  });
+
+  it("returns null for empty outlines", () => {
+    expect(startFinishSegment([])).toBeNull();
   });
 });
 

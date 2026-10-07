@@ -18,8 +18,8 @@ interface Props {
 
 /**
  * Track map for the selected session: pedal zones for the candidate lap, or the
- * two racing lines overlaid. Owns the trace fetch so the widget stays
- * presentational.
+ * two racing lines overlaid. Prefers Lines when both laps have GPS unless the
+ * user pins a mode. Owns the trace fetch so the widget stays presentational.
  */
 export function TrackMapPanel({
   outline,
@@ -30,6 +30,7 @@ export function TrackMapPanel({
   focus,
 }: Props) {
   const [mode, setMode] = useState<TrackMapMode>("pedal");
+  const [modePinned, setModePinned] = useState(false);
   const [traces, setTraces] = useState<Record<number, TracePoint[]>>({});
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -37,6 +38,11 @@ export function TrackMapPanel({
   useEffect(() => {
     if (focus) panelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [focus]);
+
+  // New track/session: allow auto Lines again.
+  useEffect(() => {
+    setModePinned(false);
+  }, [track]);
 
   const candidateId = candidate?.id ?? null;
   const referenceId = reference?.id ?? null;
@@ -67,6 +73,16 @@ export function TrackMapPanel({
   const linesAvailable =
     hasRacingLine(outline, candidateTraces) && hasRacingLine(outline, referenceTraces);
 
+  useEffect(() => {
+    if (modePinned) return;
+    setMode(linesAvailable ? "compare" : "pedal");
+  }, [linesAvailable, modePinned]);
+
+  const pickMode = (next: TrackMapMode) => {
+    setModePinned(true);
+    setMode(next);
+  };
+
   return (
     <div className="panel" ref={panelRef}>
       <div className="panel-header">
@@ -76,14 +92,14 @@ export function TrackMapPanel({
           <button
             type="button"
             className={`btn btn-sm${mode === "pedal" ? " btn-primary" : ""}`}
-            onClick={() => setMode("pedal")}
+            onClick={() => pickMode("pedal")}
           >
             Pedals
           </button>
           <button
             type="button"
             className={`btn btn-sm${mode === "compare" ? " btn-primary" : ""}`}
-            onClick={() => setMode("compare")}
+            onClick={() => pickMode("compare")}
             disabled={!linesAvailable}
             title={
               linesAvailable

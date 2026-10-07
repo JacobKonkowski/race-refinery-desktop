@@ -142,22 +142,25 @@
 .pw-trackmap { width: 100%; height: 100%; min-height: 140px; }
 .pw-trackmap svg { width: 100%; height: 100%; overflow: visible; }
 /* `--pw-map-k` (set on the svg) thins strokes as an interactive map zooms in. */
-.pw-trackmap-path {
+/* Quiet asphalt underlay; thin GPS / pedal strokes sit on top. */
+.pw-trackmap-ribbon {
   fill: none;
-  stroke: var(--pw-glow-dim, rgba(93, 255, 168, 0.55));
-  stroke-width: calc(0.02 * var(--pw-map-k, 1));
+  stroke: rgba(38, 45, 58, 0.85);
+  stroke-width: calc(0.04 * var(--pw-map-k, 1));
   stroke-linejoin: round;
+  stroke-linecap: round;
+  opacity: 0.35;
 }
 .pw-trackmap-start {
   fill: none;
-  stroke: var(--pw-glow, #5dffa8);
-  stroke-width: calc(0.012 * var(--pw-map-k, 1));
+  stroke: rgba(232, 255, 243, 0.85);
+  stroke-width: calc(0.004 * var(--pw-map-k, 1));
+  stroke-linecap: square;
 }
-/* Pedal zones: a thicker band under the circuit stroke's dots. */
+/* Pedal zones: thin line on top of the ribbon. */
 .pw-trackmap-pedal {
   fill: none;
-  stroke-width: calc(0.032 * var(--pw-map-k, 1));
-  stroke-linecap: round;
+  stroke-width: calc(0.008 * var(--pw-map-k, 1));
   stroke-linejoin: round;
 }
 .pw-trackmap-pedal.brake { stroke: var(--pw-slow, #ff6b6b); }
@@ -166,7 +169,7 @@
 /* Racing lines keep the compare chart's candidate / reference colors. */
 .pw-trackmap-line {
   fill: none;
-  stroke-width: calc(0.014 * var(--pw-map-k, 1));
+  stroke-width: calc(0.006 * var(--pw-map-k, 1));
   stroke-linejoin: round;
 }
 .pw-trackmap-line.candidate { stroke: #4aa3ff; }

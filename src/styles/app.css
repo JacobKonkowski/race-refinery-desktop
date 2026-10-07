@@ -285,7 +285,137 @@
   min-height: 0;
   overflow-y: auto;
   padding: 16px;
-  gap: 16px;
+  gap: 12px;
+}
+
+.analyze-session-bar {
+  flex-shrink: 0;
+}
+
+.analyze-session-bar .session-header {
+  padding: 10px 14px;
+}
+
+.analyze-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.9fr);
+  gap: 12px;
+  min-height: min(62vh, 720px);
+  align-items: stretch;
+}
+
+.analyze-main > .compare-panel {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: min(62vh, 720px);
+}
+
+.analyze-main .compare-scroll {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.analyze-map-cell {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: min(62vh, 720px);
+  overflow: auto;
+}
+
+.analyze-map-cell .analyze-trackmap,
+.analyze-map-cell .panel {
+  height: 100%;
+}
+
+.analyze-lap-picker .panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lap-picker-tools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lap-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.analyze-secondary {
+  padding: 0;
+}
+
+.analyze-secondary > summary {
+  cursor: pointer;
+  padding: 10px 14px;
+  font-weight: 600;
+  list-style: none;
+}
+
+.analyze-secondary > summary::-webkit-details-marker {
+  display: none;
+}
+
+.analyze-secondary[open] > summary {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.trace-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.trace-toggle {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.trace-toggle.on {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+  background: var(--color-surface-alt);
+}
+
+.pill.traffic {
+  background: #3a2f1a;
+  color: #e6b800;
+  font-size: 10px;
+}
+
+@media (max-width: 1100px) {
+  .analyze-main {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .analyze-main > .compare-panel {
+    max-height: none;
+  }
+
+  .analyze-map-cell {
+    position: static;
+    max-height: none;
+  }
 }
 
 /* --- Panels --- */
@@ -523,11 +653,27 @@
 }
 .corner-analysis {
   margin: 8px 0 16px;
+  overflow-x: auto;
 }
 .corner-header {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+.corner-caption {
+  margin: 2px 0 4px;
+  font-size: 12px;
+}
+.corner-chevron {
+  display: inline-block;
+  width: 0.9em;
+  margin-right: 4px;
+  color: var(--color-text-muted);
+  transition: transform 120ms ease;
+  transform-origin: center;
+}
+.corner-chevron.open {
+  transform: rotate(90deg);
 }
 .corner-sort {
   margin-left: auto;
@@ -544,14 +690,14 @@
   font-size: 12px;
   margin: 0 0 6px;
 }
+.corner-table tbody td {
+  vertical-align: top;
+}
 .corner-table tbody tr {
   cursor: default;
 }
 .corner-table tbody tr.corner-focusable {
   cursor: pointer;
-}
-.corner-table tbody tr.corner-worst {
-  box-shadow: inset 3px 0 0 var(--color-slow);
 }
 .corner-table tbody tr.corner-expanded {
   background: var(--color-surface-alt);
@@ -563,16 +709,16 @@
   background: var(--color-surface-alt);
   padding: 10px 12px 12px;
 }
-.corner-detail {
+.corner-detail-body {
   display: grid;
   grid-template-columns: minmax(240px, 320px) 1fr;
   gap: 16px;
   align-items: start;
 }
-.corner-detail .corner-note {
+.corner-detail-body .corner-note {
   grid-column: 1;
 }
-.corner-detail .corner-consistency {
+.corner-detail-body .corner-consistency {
   grid-column: 2;
   grid-row: 1 / span 2;
   min-width: 0;
@@ -630,9 +776,14 @@
   vertical-align: middle;
 }
 
+.lap-select-help {
+  padding: 8px 16px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
 .lap-legend {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 12px 16px;
   font-size: 12px;
   align-items: center;
 }
@@ -649,6 +800,32 @@
 }
 .lap-legend .swatch.ref {
   background: var(--color-warning);
+}
+.lap-ref-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--color-warning);
+}
+.lap-num-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pill.lap-role {
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+.pill.lap-role.cand {
+  background: rgba(74, 163, 255, 0.18);
+  color: var(--color-accent);
+}
+.pill.lap-role.ref {
+  background: rgba(210, 153, 34, 0.18);
+  color: var(--color-warning);
 }
 
 .data-table tbody tr.candidate.reference {
@@ -705,7 +882,7 @@
 /* --- Fuel / tires --- */
 .fuel-tire-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 16px;
 }
 @media (max-width: 960px) {

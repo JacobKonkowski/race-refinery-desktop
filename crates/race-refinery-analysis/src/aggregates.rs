@@ -38,6 +38,27 @@ pub fn tire_averages(frames: &[RawFrame]) -> (Option<f64>, Option<f64>, Option<f
     )
 }
 
+/// `(lf, rf, lr, rr)` mean tire pressures (kPa), `None` when no sample carried pressure.
+pub fn tire_pressure_averages(
+    frames: &[RawFrame],
+) -> (Option<f64>, Option<f64>, Option<f64>, Option<f64>) {
+    fn mean(values: impl Iterator<Item = f64>) -> Option<f64> {
+        let mut sum = 0.0;
+        let mut n = 0usize;
+        for v in values {
+            sum += v;
+            n += 1;
+        }
+        (n > 0).then_some(sum / n as f64)
+    }
+    (
+        mean(frames.iter().filter_map(|f| f.lf_pressure.map(f64::from))),
+        mean(frames.iter().filter_map(|f| f.rf_pressure.map(f64::from))),
+        mean(frames.iter().filter_map(|f| f.lr_pressure.map(f64::from))),
+        mean(frames.iter().filter_map(|f| f.rr_pressure.map(f64::from))),
+    )
+}
+
 /// Mean speed (m/s), `None` when there are no frames.
 pub fn average_speed(frames: &[RawFrame]) -> Option<f64> {
     if frames.is_empty() {
@@ -74,6 +95,10 @@ pub fn downsample_traces(frames: &[RawFrame]) -> Vec<TracePoint> {
                 steering: f.steering as f64,
                 lat: f.lat,
                 lon: f.lon,
+                rpm: f.rpm.map(f64::from),
+                lat_accel: f.lat_accel.map(f64::from),
+                long_accel: f.long_accel.map(f64::from),
+                yaw_rate: f.yaw_rate.map(f64::from),
             }
         })
         .collect()
@@ -85,32 +110,15 @@ mod tests {
 
     fn frame(fuel: f32, speed: f32, temp: f32) -> RawFrame {
         RawFrame {
-            session_num: 0,
             lap: 1,
-            lap_dist_pct: 0.0,
             speed,
-            throttle: 0.0,
-            brake: 0.0,
-            throttle_raw: None,
-            brake_raw: None,
-            clutch: None,
-            clutch_raw: None,
-            handbrake_raw: None,
-            abs_active: None,
-            steering: 0.0,
             gear: 3,
             fuel_level: fuel,
-            on_pit_road: false,
-            session_time: 0.0,
-            lap_last_lap_time: None,
-            delta_best_ok: None,
-            delta_session_best_ok: None,
-            lat: None,
-            lon: None,
             lf_temp: temp,
             rf_temp: temp,
             lr_temp: temp,
             rr_temp: temp,
+            ..Default::default()
         }
     }
 

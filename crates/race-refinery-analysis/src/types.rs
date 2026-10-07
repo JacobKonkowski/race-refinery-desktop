@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 pub use race_refinery_telemetry::{RawFrame, SectorBoundary, SessionMeta};
 
 /// A downsampled telemetry point kept for charts and comparison.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TracePoint {
     pub dist_pct: f64,
@@ -47,6 +47,16 @@ pub struct TracePoint {
     /// estimate time from speed.
     #[serde(default)]
     pub elapsed_ms: Option<f64>,
+    /// Engine RPM. `None` before schema v7 or when the IBT lacks the channel.
+    #[serde(default)]
+    pub rpm: Option<f64>,
+    /// Lateral / longitudinal acceleration (m/s²) and yaw rate (rad/s).
+    #[serde(default)]
+    pub lat_accel: Option<f64>,
+    #[serde(default)]
+    pub long_accel: Option<f64>,
+    #[serde(default)]
+    pub yaw_rate: Option<f64>,
 }
 
 impl TracePoint {
@@ -58,6 +68,11 @@ impl TracePoint {
     /// Brake the driver asked for: raw when stored, else applied.
     pub fn driver_brake(&self) -> f64 {
         self.brake_raw.unwrap_or(self.brake)
+    }
+
+    /// Clutch the driver asked for: raw when stored, else applied.
+    pub fn driver_clutch(&self) -> Option<f64> {
+        self.clutch_raw.or(self.clutch)
     }
 }
 
@@ -104,9 +119,25 @@ pub struct AnalyzedLap {
     pub rf_temp: Option<f64>,
     pub lr_temp: Option<f64>,
     pub rr_temp: Option<f64>,
+    /// Mean tire pressures (kPa) when the IBT carried pressure channels.
+    pub lf_pressure: Option<f64>,
+    pub rf_pressure: Option<f64>,
+    pub lr_pressure: Option<f64>,
+    pub rr_pressure: Option<f64>,
     /// `(sector_num, time_ms)` pairs.
     pub sectors: Vec<(i32, f64)>,
     pub traces: Vec<TracePoint>,
+    /// Sparse distance samples where another car was nearby (not on pit road).
+    pub traffic_events: Vec<TrafficEvent>,
+}
+
+/// A stretch of the lap where traffic was close enough to matter for coaching.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct TrafficEvent {
+    pub dist_pct: f64,
+    /// `"nearby"` — another car within the proximity threshold.
+    pub kind: String,
 }
 
 impl AnalyzedLap {

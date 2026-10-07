@@ -82,18 +82,42 @@ export function hasRacingLine(
   return samples.some((s) => s.lat != null && s.lon != null);
 }
 
+/** Scale GPS offset from the outline centerline so lateral position reads clearly. */
+export const LATERAL_EXAGGERATION = 2;
+
 /**
- * Screen path for a lap's samples: the true racing line when GPS is present,
- * otherwise the samples placed along the shared circuit by lap distance.
+ * Push a GPS point away from the outline centerline at `distPct`.
+ * Returns `gps` unchanged when the centerline sample is missing.
+ */
+export function exaggerateLateral(
+  gps: MapPoint,
+  center: MapPoint | null,
+  factor: number = LATERAL_EXAGGERATION,
+): MapPoint {
+  if (!center) return gps;
+  return {
+    x: center.x + (gps.x - center.x) * factor,
+    y: center.y + (gps.y - center.y) * factor,
+  };
+}
+
+/**
+ * Screen path for a lap's samples: the true racing line when GPS is present
+ * (with mild lateral exaggeration), otherwise samples placed along the shared
+ * circuit by lap distance.
  */
 export function tracePath(outline: TrackOutline, samples: TrailSample[]): MapPoint[] {
   const gps = hasRacingLine(outline, samples);
   const path: MapPoint[] = [];
   for (const s of samples) {
-    const at =
-      gps && s.lat != null && s.lon != null
-        ? projectSample(outline, s.lat, s.lon)
-        : pointAt(outline.points, s.distPct);
+    if (gps && s.lat != null && s.lon != null) {
+      const projected = projectSample(outline, s.lat, s.lon);
+      if (projected) {
+        path.push(exaggerateLateral(projected, pointAt(outline.points, s.distPct)));
+      }
+      continue;
+    }
+    const at = pointAt(outline.points, s.distPct);
     if (at) path.push(at);
   }
   return path;
@@ -143,6 +167,51 @@ export function pedalSegments(
     segments.push({ tone, points: [...bridge, path[i]] });
   }
   return segments.filter((s) => s.points.length >= 2);
+}
+
+/** Endpoints of a short S/F mark across the ribbon at lap distance 0. */
+export interface StartFinishSegment {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+/**
+ * Cross-track start/finish line through the outline at `distPct` 0.
+ * Half-width is in unit-box coords (≈ ribbon half-width).
+ */
+export function startFinishSegment(
+  points: OutlinePoint[],
+  halfWidth = 0.022,
+): StartFinishSegment | null {
+  const center = pointAt(points, 0);
+  if (!center || halfWidth <= 0) return null;
+
+  const ahead = pointAt(points, 0.01);
+  const behind = pointAt(points, 0.99);
+  let tx = 0;
+  let ty = 0;
+  if (ahead) {
+    tx = ahead.x - center.x;
+    ty = ahead.y - center.y;
+  }
+  if (tx * tx + ty * ty < 1e-12 && behind) {
+    tx = center.x - behind.x;
+    ty = center.y - behind.y;
+  }
+  const len = Math.hypot(tx, ty);
+  if (len < 1e-9) return null;
+
+  // Perpendicular to the outline tangent.
+  const nx = (-ty / len) * halfWidth;
+  const ny = (tx / len) * halfWidth;
+  return {
+    x1: center.x - nx,
+    y1: center.y - ny,
+    x2: center.x + nx,
+    y2: center.y + ny,
+  };
 }
 
 /** Open SVG path over a `0 0 1 1` viewBox. */
