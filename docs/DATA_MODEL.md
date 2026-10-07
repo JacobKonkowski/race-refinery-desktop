@@ -1,8 +1,8 @@
 # Data model
 
-SQLite at `%LOCALAPPDATA%\race-refinery\` (see `storage/db.rs`). **`PRAGMA user_version = 6`**.
+SQLite at `%LOCALAPPDATA%\race-refinery\` (see `storage/db.rs`). **`PRAGMA user_version = 10`**.
 
-Opening a pre-v2 DB drops analysis tables (`sessions`, `laps`, `sectors`, `lap_traces`) and requires reimport. v2 → v6 are additive migrations on `lap_traces` (GPS, elapsed time, raw pedals, then ABS activity), so existing sessions survive — they just have no GPS / exact corner timing / driver-pedal coloring / assist data until re-imported.
+Opening a pre-v2 DB drops analysis tables (`sessions`, `laps`, `sectors`, `lap_traces`) and requires reimport. v2 → v10 are additive migrations (GPS, elapsed time, raw pedals, ABS, RPM, dynamics, tire pressures, traffic events), so existing sessions survive — new columns stay `NULL` until re-imported.
 
 ## Tables
 
@@ -28,10 +28,11 @@ Opening a pre-v2 DB drops analysis tables (`sessions`, `laps`, `sectors`, `lap_t
 | `lap_dist_pct_min`, `lap_dist_pct_max` | Coverage (pace eligibility needs max ≥ 0.95) |
 | `pace_eligible` | Derived: time + both `_OK` + full coverage (see [ANALYSIS.md](ANALYSIS.md)) |
 | `fuel_*`, `avg_speed`, tire temps | Optional aggregates |
+| `lf/rf/lr/rr_pressure` (v9) | Mean tire pressures (kPa) when the IBT publishes them |
 
 ### `sectors` / `lap_traces`
 
-Per-lap sector times and distance-sampled traces (speed, throttle, brake, gear, steering).
+Per-lap sector times and distance-sampled traces (speed, throttle, brake, gear, steering, plus optional coaching channels).
 
 `lap_traces.lat` / `.lon` (schema v3, nullable) keep the GPS for each sample. They are `NULL` for sessions imported before v3 and for IBTs without GPS channels.
 
@@ -46,17 +47,30 @@ speed-integrated estimate (see [ANALYSIS.md](ANALYSIS.md#lap-compare-and-corners
 | `throttle_raw` | `ThrottleRaw` | Driver throttle; no downshift blips |
 | `brake_raw` | `BrakeRaw` | Driver brake, before ABS |
 | `clutch` | `Clutch` | Applied clutch (0 = disengaged, 1 = engaged) |
-| `clutch_raw` | `ClutchRaw` | Driver clutch pedal |
+| `clutch_raw` | `ClutchRaw` | Driver clutch pedal (preferred in Compare) |
 | `handbrake_raw` | `HandbrakeRaw` | Driver handbrake |
 
 They are `NULL` for sessions imported before v5 and for IBTs without the channel. Corner
-pickup reads raw with a fallback to applied; compare charts stay on applied. Clutch and
-handbrake are stored only — nothing displays them yet.
+pickup reads raw with a fallback to applied. Compare charts pedal applied values; clutch
+uses `clutch_raw` when present.
 
 `lap_traces.abs_active` (schema v6, nullable `0`/`1`) is `BrakeABSactive`: ABS reducing
 brake pressure. A trace sample stands for 6 IBT frames, and the flag is OR-ed across them
 so short ABS pulses survive downsampling. `NULL` before v6 or when the IBT lacks the
 channel (cars without ABS still record it, as `0`).
+
+Later nullable REAL channels on `lap_traces` (reimport to populate):
+
+| Version | Column | SDK |
+|---------|--------|-----|
+| v7 | `rpm` | `RPM` |
+| v8 | `lat_accel`, `long_accel`, `yaw_rate` | `LatAccel`, `LongAccel`, `YawRate` |
+
+### `lap_traffic_events` (schema v10)
+
+Sparse per-lap rows `{ dist_pct, kind }` where another car was within ~1.5% of lap distance
+of the player (sampled from `CarIdxLapDistPct` during import, not every frame). Used to
+tag laps and corners when another car was nearby.
 
 ## Settings
 

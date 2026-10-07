@@ -49,6 +49,13 @@ export interface LapSummary {
   rfTemp: number | null;
   lrTemp: number | null;
   rrTemp: number | null;
+  /** Mean tire pressures (kPa); null before schema v9 / without channel. */
+  lfPressure: number | null;
+  rfPressure: number | null;
+  lrPressure: number | null;
+  rrPressure: number | null;
+  /** True when the lap has at least one sparse traffic event. */
+  hasTraffic: boolean;
   sectors: SectorTime[];
   /** Delta to the fastest pace-eligible lap in this sub-session. */
   deltaToBestMs: number | null;
@@ -80,6 +87,11 @@ export interface TracePoint {
   lon: number | null;
   /** ms since the lap's first frame; `null` for sessions imported before v4 traces. */
   elapsedMs: number | null;
+  /** Engine RPM; `null` before schema v7. */
+  rpm: number | null;
+  latAccel: number | null;
+  longAccel: number | null;
+  yawRate: number | null;
 }
 
 export interface LapTrace {
@@ -124,8 +136,23 @@ export interface AlignedPoint {
   referenceGear: number | null;
   candidateSteering: number | null;
   referenceSteering: number | null;
+  candidateClutch: number | null;
+  referenceClutch: number | null;
+  candidateRpm: number | null;
+  referenceRpm: number | null;
+  candidateLatAccel: number | null;
+  referenceLatAccel: number | null;
+  candidateLongAccel: number | null;
+  referenceLongAccel: number | null;
+  candidateYawRate: number | null;
+  referenceYawRate: number | null;
   /** Running gap (candidate − reference, ms); `null` where either lap has no time curve. */
   cumulativeDeltaMs: number | null;
+}
+
+export interface TrafficEvent {
+  distPct: number;
+  kind: string;
 }
 
 /** "recorded" = both laps carry elapsed time; "estimated" = integrated from speed. */
@@ -138,6 +165,10 @@ export interface CornerDelta {
   entryPct: number;
   apexPct: number;
   exitPct: number;
+  /** Time through this reference-defined window on each lap's timeline. */
+  candidateTimeMs: number | null;
+  referenceTimeMs: number | null;
+  /** Candidate − reference through the corner; + = slower. */
   timeDeltaMs: number;
   entryDeltaMs: number;
   exitDeltaMs: number;
@@ -156,8 +187,6 @@ export interface CornerDelta {
 export interface CornerTechnique {
   /** `null` when the lap has no `BrakeABSactive` (imported before schema v6). */
   absMs: number | null;
-  /** `null` without raw pedals (imported before schema v5). */
-  tcMs: number | null;
   /** 0..1; `null` when the lap didn't brake for the corner. */
   peakBrake: number | null;
   trailBrakeMs: number | null;
@@ -167,9 +196,9 @@ export interface CornerTechnique {
 }
 
 export type LapRole = "candidate" | "reference";
-export type AssistKind = "abs" | "tc";
+export type AssistKind = "abs";
 
-/** A stretch of lap distance where ABS or traction control intervened. */
+/** A stretch of lap distance where ABS intervened. */
 export interface AssistSpan {
   lap: LapRole;
   kind: AssistKind;
@@ -204,8 +233,10 @@ export interface LapComparison {
   sectorDeltas: SectorDelta[];
   series: AlignedPoint[];
   corners: CornerDelta[];
-  /** Where ABS / TC intervened on either lap. */
+  /** Where ABS intervened on either lap. */
   assists: AssistSpan[];
+  candidateTraffic: TrafficEvent[];
+  referenceTraffic: TrafficEvent[];
   timing: TimingSource | null;
   trackLengthM: number | null;
 }

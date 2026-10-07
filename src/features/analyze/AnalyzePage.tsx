@@ -76,6 +76,8 @@ export function AnalyzePage() {
     [],
   );
   const [reimporting, setReimporting] = useState(false);
+  const [paceOnly, setPaceOnly] = useState(false);
+  const [moreLapColumns, setMoreLapColumns] = useState(false);
   /** Suppresses auto-select on each import-complete during "Re-import all". */
   const bulkReimport = useRef(false);
   const importActions = useImportActions();
@@ -91,7 +93,6 @@ export function AnalyzePage() {
     return list;
   }, []);
 
-  // Initial load + config check.
   useEffect(() => {
     refreshSessions()
       .then((list) => {
@@ -109,7 +110,6 @@ export function AnalyzePage() {
     checkIracingConfig().then(setConfig).catch(() => undefined);
   }, [refreshSessions]);
 
-  // Refresh (and auto-select) when an import completes.
   useEffect(() => {
     const unlisten = onImportComplete(async (sessionId) => {
       if (bulkReimport.current) return;
@@ -123,7 +123,6 @@ export function AnalyzePage() {
     };
   }, [refreshSessions, selectSession]);
 
-  // Load detail when the selected session changes.
   useEffect(() => {
     if (selectedId == null) {
       setDetail(null);
@@ -281,7 +280,7 @@ export function AnalyzePage() {
           <div className="loading">Session not found.</div>
         ) : (
           <>
-            <div className="panel">
+            <div className="analyze-session-bar panel">
               <SessionHeader
                 session={detail.session}
                 stats={stats}
@@ -297,17 +296,62 @@ export function AnalyzePage() {
               <ConfigBanner />
             ) : null}
 
-            <div className="panel">
+            <div className="analyze-main">
+              <ComparePanel
+                laps={laps}
+                candidate={candidate}
+                reference={reference}
+                onChangeReference={setReferenceLapId}
+                onHoverDistPct={setHighlightPct}
+                onFocusDistPct={focusMapAt}
+              />
+              <div className="analyze-map-cell">
+                <TrackMapPanel
+                  outline={trackMap}
+                  track={detail.session.track}
+                  candidate={candidate}
+                  reference={reference}
+                  highlightPct={highlightPct}
+                  focus={mapFocus}
+                />
+              </div>
+            </div>
+
+            <div className="panel analyze-lap-picker">
               <div className="panel-header">
                 <h2>Laps</h2>
-                <div className="lap-legend muted" style={{ marginLeft: "auto" }}>
+                <div className="lap-picker-tools">
+                  <label className="lap-filter">
+                    <input
+                      type="checkbox"
+                      checked={paceOnly}
+                      onChange={(e) => setPaceOnly(e.target.checked)}
+                    />
+                    Pace only
+                  </label>
+                  <button
+                    type="button"
+                    className={`btn btn-ghost${moreLapColumns ? " on" : ""}`}
+                    onClick={() => setMoreLapColumns((v) => !v)}
+                  >
+                    {moreLapColumns ? "Fewer columns" : "More columns"}
+                  </button>
+                </div>
+              </div>
+              <div className="lap-select-help muted">
+                <div className="lap-legend">
                   <span>
-                    <span className="swatch cand" /> Candidate — click
+                    <span className="swatch cand" /> Click a lap to compare
                   </span>
                   <span>
-                    <span className="swatch ref" /> Reference — Shift/right-click
+                    <span className="swatch ref" /> Right-click (or Shift-click) to set
+                    reference
                   </span>
                 </div>
+                {candidateLapId != null &&
+                (referenceLapId == null || referenceLapId === candidateLapId) ? (
+                  <p className="lap-ref-hint">Right-click another lap as reference.</p>
+                ) : null}
               </div>
               <div className="panel-body" style={{ padding: 0 }}>
                 <LapTable
@@ -316,29 +360,18 @@ export function AnalyzePage() {
                   referenceLapId={referenceLapId}
                   onSelectCandidate={setCandidateLapId}
                   onSelectReference={setReferenceLapId}
+                  paceOnly={paceOnly}
+                  showTireTemps={moreLapColumns}
                 />
               </div>
             </div>
 
-            <TrackMapPanel
-              outline={trackMap}
-              track={detail.session.track}
-              candidate={candidate}
-              reference={reference}
-              highlightPct={highlightPct}
-              focus={mapFocus}
-            />
-
-            <ComparePanel
-              laps={laps}
-              candidate={candidate}
-              reference={reference}
-              onChangeReference={setReferenceLapId}
-              onHoverDistPct={setHighlightPct}
-              onFocusDistPct={focusMapAt}
-            />
-
-            <FuelTirePanel laps={laps} />
+            <details className="analyze-secondary panel">
+              <summary>Fuel &amp; tires</summary>
+              <div className="panel-body">
+                <FuelTirePanel laps={laps} />
+              </div>
+            </details>
           </>
         )}
       </div>

@@ -122,10 +122,10 @@ pub fn compare_laps(
     reference_lap_id: i64,
 ) -> Result<LapComparison, String> {
     let db = state.import.db.lock();
-    let (cand_time, cand_sectors, cand_traces) = db
+    let (cand_time, cand_sectors, cand_traces, cand_traffic) = db
         .get_lap_compare_data(candidate_lap_id)
         .map_err(|e| e.to_string())?;
-    let (ref_time, ref_sectors, ref_traces) = db
+    let (ref_time, ref_sectors, ref_traces, ref_traffic) = db
         .get_lap_compare_data(reference_lap_id)
         .map_err(|e| e.to_string())?;
 
@@ -134,12 +134,14 @@ pub fn compare_laps(
         lap_time_ms: cand_time,
         sectors: &cand_sectors,
         traces: &cand_traces,
+        traffic: &cand_traffic,
     };
     let reference = CompareInput {
         lap_id: reference_lap_id,
         lap_time_ms: ref_time,
         sectors: &ref_sectors,
         traces: &ref_traces,
+        traffic: &ref_traffic,
     };
     Ok(run_compare(&candidate, &reference))
 }
@@ -155,7 +157,7 @@ pub fn corner_consistency(
     let db = state.import.db.lock();
     let load = |lap_id: i64| {
         db.get_lap_compare_data(lap_id)
-            .map(|(time, _, traces)| (lap_id, time, traces))
+            .map(|(time, _, traces, _)| (lap_id, time, traces))
             .map_err(|e| e.to_string())
     };
     let reference = load(reference_lap_id)?;

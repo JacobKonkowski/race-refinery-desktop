@@ -14,9 +14,12 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tracing::info;
 
-use race_refinery_analysis::{analyze_session, AnalyzedSession, SectorBoundary, SessionMeta};
+use race_refinery_analysis::{
+    analyze_session, events_for_lap, AnalyzedSession, SectorBoundary, SessionMeta,
+};
 
 use super::frame_extractor::FastFrameExtractor;
+use super::traffic_sampler::TrafficSampler;
 
 pub struct ImportResult {
     pub session_id: i64,
@@ -100,6 +103,7 @@ pub fn parse_ibt_file_fast(
     };
 
     let extractor = FastFrameExtractor::from_schema(reader.variables())?;
+    let mut traffic = TrafficSampler::from_schema(reader.variables());
 
     let read_start = Instant::now();
     let mut frames = Vec::with_capacity(total_frames);
@@ -115,6 +119,7 @@ pub fn parse_ibt_file_fast(
                 format!("Reading frames... {idx}/{total_frames}"),
             );
         }
+        traffic.observe(&frame_data);
         frames.push(extractor.extract(&frame_data));
     }
     info!(
@@ -130,9 +135,14 @@ pub fn parse_ibt_file_fast(
     );
 
     let analyze_start = Instant::now();
-    let analyzed = analyze_session(frames, &meta);
+    let mut analyzed = analyze_session(frames, &meta);
+    let traffic_samples = traffic.into_samples();
+    let traffic_count = traffic_samples.len();
+    for lap in &mut analyzed.laps {
+        lap.traffic_events = events_for_lap(&traffic_samples, lap.session_num, lap.iracing_lap);
+    }
     info!(
-        "Analyzed {} laps across {} iRacing sub-sessions in {} ms",
+        "Analyzed {} laps across {} iRacing sub-sessions in {} ms ({} traffic samples)",
         analyzed.laps.len(),
         analyzed
             .laps
@@ -140,7 +150,8 @@ pub fn parse_ibt_file_fast(
             .map(|l| l.session_num)
             .collect::<HashSet<_>>()
             .len(),
-        analyze_start.elapsed().as_millis()
+        analyze_start.elapsed().as_millis(),
+        traffic_count
     );
 
     report_progress(&progress, 88.0, "Parse complete, preparing save...");

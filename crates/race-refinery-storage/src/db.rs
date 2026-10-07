@@ -1,10 +1,9 @@
 //! SQLite storage. Persists [`AnalyzedSession`] products and serves read models.
 //!
-//! Schema is versioned via `PRAGMA user_version`. Current schema is **v6**.
+//! Schema is versioned via `PRAGMA user_version`. Current schema is **v10**.
 //! Versions older than 2 are wiped once (pre-v2 had incompatible lap taxonomy);
-//! upgrades from v2 onward use incremental migrations (v3 GPS, v4 elapsed_ms,
-//! v5 raw pedals, v6 abs_active). Full wipe remains available via the explicit
-//! `clear_database` debug command only.
+//! upgrades from v2 onward use incremental migrations (v3 GPS … v10 traffic).
+//! Full wipe remains available via the explicit `clear_database` debug command only.
 
 use anyhow::{Context, Result};
 use rusqlite::{params, Connection, OptionalExtension};
@@ -12,11 +11,12 @@ use std::path::PathBuf;
 
 use race_refinery_analysis::{
     clear_sticky_times_in_place, is_phantom_lap, pace_eligible_from, AnalyzedSession, TracePoint,
+    TrafficEvent,
 };
 
 use super::models::*;
 
-const SCHEMA_VERSION: i64 = 6;
+const SCHEMA_VERSION: i64 = 10;
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS sessions (
@@ -53,6 +53,10 @@ CREATE TABLE IF NOT EXISTS laps (
     rf_temp REAL,
     lr_temp REAL,
     rr_temp REAL,
+    lf_pressure REAL,
+    rf_pressure REAL,
+    lr_pressure REAL,
+    rr_pressure REAL,
     UNIQUE(session_id, session_num, lap_number)
 );
 
@@ -81,12 +85,24 @@ CREATE TABLE IF NOT EXISTS lap_traces (
     clutch REAL,
     clutch_raw REAL,
     handbrake_raw REAL,
-    abs_active INTEGER
+    abs_active INTEGER,
+    rpm REAL,
+    lat_accel REAL,
+    long_accel REAL,
+    yaw_rate REAL
+);
+
+CREATE TABLE IF NOT EXISTS lap_traffic_events (
+    id INTEGER PRIMARY KEY,
+    lap_id INTEGER NOT NULL REFERENCES laps(id) ON DELETE CASCADE,
+    dist_pct REAL NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'nearby'
 );
 
 CREATE INDEX IF NOT EXISTS idx_laps_session ON laps(session_id);
 CREATE INDEX IF NOT EXISTS idx_sectors_lap ON sectors(lap_id);
 CREATE INDEX IF NOT EXISTS idx_traces_lap ON lap_traces(lap_id);
+CREATE INDEX IF NOT EXISTS idx_traffic_lap ON lap_traffic_events(lap_id);
 ";
 
 pub struct Database {
@@ -155,6 +171,23 @@ impl Database {
             if version < 6 {
                 add_column_if_missing(conn, "lap_traces", "abs_active", "INTEGER")?;
             }
+            // v7 RPM.
+            if version < 7 {
+                add_column_if_missing(conn, "lap_traces", "rpm", "REAL")?;
+            }
+            // v8 dynamics.
+            if version < 8 {
+                for col in ["lat_accel", "long_accel", "yaw_rate"] {
+                    add_column_if_missing(conn, "lap_traces", col, "REAL")?;
+                }
+            }
+            // v9 tire pressures on lap aggregates.
+            if version < 9 {
+                for col in ["lf_pressure", "rf_pressure", "lr_pressure", "rr_pressure"] {
+                    add_column_if_missing(conn, "laps", col, "REAL")?;
+                }
+            }
+            // v10 sparse traffic events (table created by SCHEMA above).
             if version < SCHEMA_VERSION {
                 conn.execute_batch(&format!("PRAGMA user_version = {SCHEMA_VERSION};"))?;
             }
@@ -237,15 +270,20 @@ impl Database {
                 session_id, session_num, session_type, iracing_lap, lap_number, lap_time_ms,
                 delta_best_ok, delta_session_best_ok, on_pit_road_start, on_pit_road_end,
                 lap_dist_pct_min, lap_dist_pct_max, pace_eligible,
-                fuel_start, fuel_used, avg_speed, lf_temp, rf_temp, lr_temp, rr_temp
-             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)",
+                fuel_start, fuel_used, avg_speed, lf_temp, rf_temp, lr_temp, rr_temp,
+                lf_pressure, rf_pressure, lr_pressure, rr_pressure
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24)",
         )?;
         let mut sector_stmt =
             tx.prepare("INSERT INTO sectors (lap_id, sector_num, time_ms) VALUES (?1, ?2, ?3)")?;
         let mut trace_stmt = tx.prepare(
             "INSERT INTO lap_traces (lap_id, dist_pct, speed, throttle, brake, gear, steering, lat, lon, elapsed_ms,
-                 throttle_raw, brake_raw, clutch, clutch_raw, handbrake_raw, abs_active)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+                 throttle_raw, brake_raw, clutch, clutch_raw, handbrake_raw, abs_active,
+                 rpm, lat_accel, long_accel, yaw_rate)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)",
+        )?;
+        let mut traffic_stmt = tx.prepare(
+            "INSERT INTO lap_traffic_events (lap_id, dist_pct, kind) VALUES (?1, ?2, ?3)",
         )?;
 
         for lap in &session.laps {
@@ -270,6 +308,10 @@ impl Database {
                 lap.rf_temp,
                 lap.lr_temp,
                 lap.rr_temp,
+                lap.lf_pressure,
+                lap.rf_pressure,
+                lap.lr_pressure,
+                lap.rr_pressure,
             ])?;
             let lap_id = tx.last_insert_rowid();
 
@@ -294,13 +336,21 @@ impl Database {
                     point.clutch_raw,
                     point.handbrake_raw,
                     point.abs_active,
+                    point.rpm,
+                    point.lat_accel,
+                    point.long_accel,
+                    point.yaw_rate,
                 ])?;
+            }
+            for ev in &lap.traffic_events {
+                traffic_stmt.execute(params![lap_id, ev.dist_pct, ev.kind])?;
             }
         }
 
         drop(lap_stmt);
         drop(sector_stmt);
         drop(trace_stmt);
+        drop(traffic_stmt);
         tx.commit()?;
         Ok(session_id)
     }
@@ -310,7 +360,8 @@ impl Database {
             .conn
             .query_row("SELECT COUNT(*) FROM sessions", [], |row| row.get(0))?;
         self.conn.execute_batch(
-            "DELETE FROM lap_traces;
+            "DELETE FROM lap_traffic_events;
+             DELETE FROM lap_traces;
              DELETE FROM sectors;
              DELETE FROM laps;
              DELETE FROM sessions;",
@@ -373,7 +424,8 @@ impl Database {
             "SELECT id, session_num, session_type, iracing_lap, lap_number, lap_time_ms,
                     delta_best_ok, delta_session_best_ok, on_pit_road_start, on_pit_road_end,
                     lap_dist_pct_min, lap_dist_pct_max, pace_eligible,
-                    fuel_start, fuel_used, avg_speed, lf_temp, rf_temp, lr_temp, rr_temp
+                    fuel_start, fuel_used, avg_speed, lf_temp, rf_temp, lr_temp, rr_temp,
+                    lf_pressure, rf_pressure, lr_pressure, rr_pressure
              FROM laps WHERE session_id = ?1 ORDER BY session_num, lap_number",
         )?;
         let rows = stmt.query_map(params![session_id], |row| {
@@ -398,11 +450,29 @@ impl Database {
                 rf_temp: row.get(17)?,
                 lr_temp: row.get(18)?,
                 rr_temp: row.get(19)?,
+                lf_pressure: row.get(20)?,
+                rf_pressure: row.get(21)?,
+                lr_pressure: row.get(22)?,
+                rr_pressure: row.get(23)?,
+                has_traffic: false,
                 sectors: Vec::new(),
                 delta_to_best_ms: None,
             })
         })?;
-        rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+        let mut laps = rows.collect::<Result<Vec<_>, _>>()?;
+        for lap in &mut laps {
+            lap.has_traffic = self.lap_has_traffic(lap.id)?;
+        }
+        Ok(laps)
+    }
+
+    fn lap_has_traffic(&self, lap_id: i64) -> Result<bool> {
+        let count: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM lap_traffic_events WHERE lap_id = ?1",
+            params![lap_id],
+            |row| row.get(0),
+        )?;
+        Ok(count > 0)
     }
 
     fn get_laps_for_session(&self, session_id: i64) -> Result<Vec<LapSummary>> {
@@ -471,7 +541,8 @@ impl Database {
     fn get_trace_points(&self, lap_id: i64) -> Result<Vec<TracePoint>> {
         let mut stmt = self.conn.prepare(
             "SELECT dist_pct, speed, throttle, brake, gear, steering, lat, lon, elapsed_ms,
-                    throttle_raw, brake_raw, clutch, clutch_raw, handbrake_raw, abs_active
+                    throttle_raw, brake_raw, clutch, clutch_raw, handbrake_raw, abs_active,
+                    rpm, lat_accel, long_accel, yaw_rate
              FROM lap_traces WHERE lap_id = ?1 ORDER BY dist_pct",
         )?;
         let points = stmt
@@ -492,13 +563,30 @@ impl Database {
                     clutch_raw: row.get(12)?,
                     handbrake_raw: row.get(13)?,
                     abs_active: row.get(14)?,
+                    rpm: row.get(15)?,
+                    lat_accel: row.get(16)?,
+                    long_accel: row.get(17)?,
+                    yaw_rate: row.get(18)?,
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(points)
     }
 
-    /// Data needed to compare a single lap: `(lap_time_ms, sectors, traces)`.
+    fn get_traffic_events(&self, lap_id: i64) -> Result<Vec<TrafficEvent>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT dist_pct, kind FROM lap_traffic_events WHERE lap_id = ?1 ORDER BY dist_pct",
+        )?;
+        let rows = stmt.query_map(params![lap_id], |row| {
+            Ok(TrafficEvent {
+                dist_pct: row.get(0)?,
+                kind: row.get(1)?,
+            })
+        })?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    /// Data needed to compare a single lap: time, sectors, traces, traffic.
     pub fn get_lap_compare_data(&self, lap_id: i64) -> Result<LapCompareData> {
         let lap_time_ms: Option<f64> = self.conn.query_row(
             "SELECT lap_time_ms FROM laps WHERE id = ?1",
@@ -511,12 +599,18 @@ impl Database {
             .map(|s| (s.sector_num, s.time_ms))
             .collect();
         let traces = self.get_trace_points(lap_id)?;
-        Ok((lap_time_ms, sectors, traces))
+        let traffic = self.get_traffic_events(lap_id)?;
+        Ok((lap_time_ms, sectors, traces, traffic))
     }
 }
 
-/// `(lap_time_ms, sector_num → time_ms, traces)` for [`Database::get_lap_compare_data`].
-pub type LapCompareData = (Option<f64>, Vec<(i32, f64)>, Vec<TracePoint>);
+/// `(lap_time_ms, sectors, traces, traffic)` for [`Database::get_lap_compare_data`].
+pub type LapCompareData = (
+    Option<f64>,
+    Vec<(i32, f64)>,
+    Vec<TracePoint>,
+    Vec<TrafficEvent>,
+);
 
 fn apply_lap_display_cleanup(laps: &mut Vec<LapSummary>) {
     laps.retain(|l| {

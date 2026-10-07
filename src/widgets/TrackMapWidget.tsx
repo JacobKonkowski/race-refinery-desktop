@@ -14,6 +14,7 @@ import {
   hasRacingLine,
   pedalSegments,
   pointAt,
+  startFinishSegment,
   toPathD,
   tracePath,
 } from "../shared/trackMap";
@@ -188,7 +189,6 @@ export function TrackMapWidget({
     );
   }
 
-  const start = pointAt(outline.points, 0);
   const marker = highlightPct == null ? null : pointAt(outline.points, highlightPct);
   const cars = snap
     ? snap.competitors
@@ -206,6 +206,7 @@ export function TrackMapWidget({
   // while still growing a little on screen.
   const k = 1 / Math.sqrt(camera.scale);
   const svgStyle = { "--pw-map-k": k } as CSSProperties;
+  const startLine = startFinishSegment(outline.points, 0.022 * k);
 
   return (
     <div
@@ -222,7 +223,7 @@ export function TrackMapWidget({
         {...handlers}
       >
         <title>{outline.track}</title>
-        <path className="pw-trackmap-path" d={outline.svgPath} />
+        <path className="pw-trackmap-ribbon" d={outline.svgPath} />
 
         {segments.map((seg, i) => (
           <path
@@ -238,8 +239,14 @@ export function TrackMapWidget({
           <path className="pw-trackmap-line candidate" d={toPathD(candidateLine)} />
         )}
 
-        {start && (
-          <circle className="pw-trackmap-start" cx={start.x} cy={start.y} r={0.018 * k} />
+        {startLine && (
+          <line
+            className="pw-trackmap-start"
+            x1={startLine.x1}
+            y1={startLine.y1}
+            x2={startLine.x2}
+            y2={startLine.y2}
+          />
         )}
         {cars.map((c) => (
           <circle

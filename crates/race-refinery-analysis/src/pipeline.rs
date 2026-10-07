@@ -6,7 +6,9 @@
 
 use rayon::prelude::*;
 
-use super::aggregates::{average_speed, downsample_traces, fuel_stats, tire_averages};
+use super::aggregates::{
+    average_speed, downsample_traces, fuel_stats, tire_averages, tire_pressure_averages,
+};
 use super::cleanup::finalize_analyzed_laps;
 use super::sectors::compute_sector_times;
 use super::segment::{lap_dist_range, segment_laps};
@@ -46,6 +48,7 @@ fn analyze_lap(group: LapFrames, boundaries: &[super::types::SectorBoundary]) ->
     let (min_pct, max_pct) = lap_dist_range(frames);
     let (fuel_start, fuel_used) = fuel_stats(frames);
     let (lf_temp, rf_temp, lr_temp, rr_temp) = tire_averages(frames);
+    let (lf_pressure, rf_pressure, lr_pressure, rr_pressure) = tire_pressure_averages(frames);
     let sectors = compute_sector_times(frames, boundaries);
     let traces = downsample_traces(frames);
 
@@ -71,8 +74,13 @@ fn analyze_lap(group: LapFrames, boundaries: &[super::types::SectorBoundary]) ->
         rf_temp,
         lr_temp,
         rr_temp,
+        lf_pressure,
+        rf_pressure,
+        lr_pressure,
+        rr_pressure,
         sectors,
         traces,
+        traffic_events: Vec::new(),
     }
 }
 
@@ -91,19 +99,10 @@ mod tests {
         pit: bool,
     ) -> RawFrame {
         RawFrame {
-            session_num: 0,
             lap,
             lap_dist_pct: pct,
             speed: 55.0,
             throttle: 1.0,
-            brake: 0.0,
-            throttle_raw: None,
-            brake_raw: None,
-            clutch: None,
-            clutch_raw: None,
-            handbrake_raw: None,
-            abs_active: None,
-            steering: 0.0,
             gear: 4,
             fuel_level: 50.0,
             on_pit_road: pit,
@@ -111,12 +110,11 @@ mod tests {
             lap_last_lap_time: last,
             delta_best_ok: ok,
             delta_session_best_ok: ok,
-            lat: None,
-            lon: None,
             lf_temp: 80.0,
             rf_temp: 80.0,
             lr_temp: 80.0,
             rr_temp: 80.0,
+            ..Default::default()
         }
     }
 

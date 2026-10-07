@@ -29,10 +29,18 @@ pub struct FastFrameExtractor {
     clutch_raw: Option<VariableInfo>,
     handbrake_raw: Option<VariableInfo>,
     abs_active: Option<VariableInfo>,
+    rpm: Option<VariableInfo>,
+    lat_accel: Option<VariableInfo>,
+    long_accel: Option<VariableInfo>,
+    yaw_rate: Option<VariableInfo>,
     lf_temp: Option<VariableInfo>,
     rf_temp: Option<VariableInfo>,
     lr_temp: Option<VariableInfo>,
     rr_temp: Option<VariableInfo>,
+    lf_pressure: Option<VariableInfo>,
+    rf_pressure: Option<VariableInfo>,
+    lr_pressure: Option<VariableInfo>,
+    rr_pressure: Option<VariableInfo>,
 }
 
 impl FastFrameExtractor {
@@ -48,6 +56,13 @@ impl FastFrameExtractor {
             schema
                 .get_variable(mid)
                 .or_else(|| schema.get_variable(carcass))
+                .cloned()
+        }
+
+        fn tire_pressure(schema: &VariableSchema, cold: &str, hot: &str) -> Option<VariableInfo> {
+            schema
+                .get_variable(cold)
+                .or_else(|| schema.get_variable(hot))
                 .cloned()
         }
 
@@ -74,10 +89,19 @@ impl FastFrameExtractor {
             clutch_raw: schema.get_variable("ClutchRaw").cloned(),
             handbrake_raw: schema.get_variable("HandbrakeRaw").cloned(),
             abs_active: schema.get_variable("BrakeABSactive").cloned(),
+            rpm: schema.get_variable("RPM").cloned(),
+            lat_accel: schema.get_variable("LatAccel").cloned(),
+            long_accel: schema.get_variable("LongAccel").cloned(),
+            yaw_rate: schema.get_variable("YawRate").cloned(),
             lf_temp: tire_temp(schema, "LFtempM", "LFtempCM"),
             rf_temp: tire_temp(schema, "RFtempM", "RFtempCM"),
             lr_temp: tire_temp(schema, "LRtempM", "LRtempCM"),
             rr_temp: tire_temp(schema, "RRtempM", "RRtempCM"),
+            // Cold preferred, then hot / carcass-style fallbacks used by some cars.
+            lf_pressure: tire_pressure(schema, "LFcoldPressure", "LFpressure"),
+            rf_pressure: tire_pressure(schema, "RFcoldPressure", "RFpressure"),
+            lr_pressure: tire_pressure(schema, "LRcoldPressure", "LRpressure"),
+            rr_pressure: tire_pressure(schema, "RRcoldPressure", "RRpressure"),
         })
     }
 
@@ -102,6 +126,10 @@ impl FastFrameExtractor {
             abs_active: self.abs_active.as_ref().map(|v| read_bool(data, v)),
             steering: read_f32(data, &self.steering),
             gear: read_i32(data, &self.gear),
+            rpm: self.rpm.as_ref().map(|v| read_f32(data, v)),
+            lat_accel: self.lat_accel.as_ref().map(|v| read_f32(data, v)),
+            long_accel: self.long_accel.as_ref().map(|v| read_f32(data, v)),
+            yaw_rate: self.yaw_rate.as_ref().map(|v| read_f32(data, v)),
             fuel_level: read_f32(data, &self.fuel_level),
             on_pit_road: read_bool(data, &self.on_pit_road),
             session_time: read_f64(data, &self.session_time),
@@ -133,6 +161,10 @@ impl FastFrameExtractor {
                 .as_ref()
                 .map(|v| read_f32(data, v))
                 .unwrap_or(0.0),
+            lf_pressure: self.lf_pressure.as_ref().map(|v| read_f32(data, v)),
+            rf_pressure: self.rf_pressure.as_ref().map(|v| read_f32(data, v)),
+            lr_pressure: self.lr_pressure.as_ref().map(|v| read_f32(data, v)),
+            rr_pressure: self.rr_pressure.as_ref().map(|v| read_f32(data, v)),
         }
     }
 }

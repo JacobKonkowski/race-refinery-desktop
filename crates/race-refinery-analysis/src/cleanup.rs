@@ -144,8 +144,13 @@ mod tests {
             rf_temp: None,
             lr_temp: None,
             rr_temp: None,
+            lf_pressure: None,
+            rf_pressure: None,
+            lr_pressure: None,
+            rr_pressure: None,
             sectors: vec![],
             traces: vec![],
+            traffic_events: vec![],
         }
     }
 

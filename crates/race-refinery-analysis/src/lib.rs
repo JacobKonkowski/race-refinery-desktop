@@ -15,6 +15,7 @@ pub mod pipeline;
 pub mod sectors;
 pub mod segment;
 pub mod track_map;
+pub mod traffic;
 pub mod types;
 
 pub use cleanup::{
@@ -29,6 +30,8 @@ pub use track_map::{
     build_outline, outline_from_laps, point_at, project_polyline, project_sample, GpsSample,
     OutlinePoint, TrackOutline, TrackProjection,
 };
+pub use traffic::{events_for_lap, field_nearby, TrafficSample, NEARBY_PCT};
 pub use types::{
     AnalyzedLap, AnalyzedSession, LapFrames, RawFrame, SectorBoundary, SessionMeta, TracePoint,
+    TrafficEvent,
 };

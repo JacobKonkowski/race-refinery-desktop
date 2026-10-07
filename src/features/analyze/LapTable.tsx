@@ -14,6 +14,10 @@ interface Props {
   referenceLapId: number | null;
   onSelectCandidate: (id: number) => void;
   onSelectReference: (id: number) => void;
+  /** When true, hide non-pace-eligible laps (candidate/reference always kept). */
+  paceOnly?: boolean;
+  /** Show tire temperature columns (secondary density). */
+  showTireTemps?: boolean;
 }
 
 interface Group {
@@ -61,7 +65,15 @@ function sectorClass(
 
 /** Flag cell reflecting the sim's own pace judgement. */
 function OkFlag({ lap }: { lap: LapSummary }) {
-  if (lap.paceEligible) return <span className="flag ok" title="Both _OK flags true">✓</span>;
+  if (lap.paceEligible)
+    return (
+      <span
+        className="flag ok"
+        title="Pace-eligible: both _OK flags true, official lap time, and at least 95% of the lap recorded"
+      >
+        ✓
+      </span>
+    );
   if (lap.deltaBestOk === null && lap.deltaSessionBestOk === null)
     return <span className="flag unknown" title="_OK channel not in this IBT">?</span>;
   return <span className="flag no" title="Sim marked this lap's delta invalid">✗</span>;
@@ -87,15 +99,25 @@ export function LapTable({
   referenceLapId,
   onSelectCandidate,
   onSelectReference,
+  paceOnly = false,
+  showTireTemps = false,
 }: Props) {
-  const groups = useMemo(() => groupBySubsession(laps), [laps]);
+  const visibleLaps = useMemo(() => {
+    if (!paceOnly) return laps;
+    return laps.filter(
+      (l) =>
+        l.paceEligible || l.id === candidateLapId || l.id === referenceLapId,
+    );
+  }, [laps, paceOnly, candidateLapId, referenceLapId]);
+
+  const groups = useMemo(() => groupBySubsession(visibleLaps), [visibleLaps]);
   const maxSector = useMemo(
-    () => laps.reduce((m, l) => Math.max(m, ...l.sectors.map((s) => s.sectorNum), 0), 0),
-    [laps],
+    () => visibleLaps.reduce((m, l) => Math.max(m, ...l.sectors.map((s) => s.sectorNum), 0), 0),
+    [visibleLaps],
   );
   const sectorNums = Array.from({ length: maxSector }, (_, i) => i + 1);
-  // Lap, Time, Δ Best, sectors…, OK, Pit, Fuel, LF, RF, LR, RR
-  const colSpan = 3 + sectorNums.length + 2 + 5;
+  // Lap, Time, Δ Best, sectors…, OK, Pit, Fuel[, temps]
+  const colSpan = 3 + sectorNums.length + 2 + 1 + (showTireTemps ? 4 : 0);
 
   return (
     <div className="table-scroll">
@@ -113,10 +135,14 @@ export function LapTable({
             <th>OK</th>
             <th>Pit</th>
             <th className="num">Fuel</th>
-            <th className="num">LF</th>
-            <th className="num">RF</th>
-            <th className="num">LR</th>
-            <th className="num">RR</th>
+            {showTireTemps ? (
+              <>
+                <th className="num">LF</th>
+                <th className="num">RF</th>
+                <th className="num">LR</th>
+                <th className="num">RR</th>
+              </>
+            ) : null}
           </tr>
         </thead>
         <tbody>
@@ -155,7 +181,25 @@ export function LapTable({
                         onSelectReference(lap.id);
                       }}
                     >
-                      <td>{lap.lapNumber}</td>
+                      <td>
+                        <span className="lap-num-cell">
+                          {lap.lapNumber}
+                          {lap.id === candidateLapId ? (
+                            <span className="pill lap-role cand">Cand</span>
+                          ) : null}
+                          {lap.id === referenceLapId ? (
+                            <span className="pill lap-role ref">Ref</span>
+                          ) : null}
+                          {lap.hasTraffic ? (
+                            <span
+                              className="pill traffic"
+                              title="Another car within ~1.5% lap distance on this lap"
+                            >
+                              traffic
+                            </span>
+                          ) : null}
+                        </span>
+                      </td>
                       <td className="num">{formatLapTime(lap.lapTimeMs)}</td>
                       <td className={`num ${deltaClass(lap.deltaToBestMs)}`}>
                         {formatDelta(lap.deltaToBestMs)}
@@ -175,10 +219,14 @@ export function LapTable({
                         <PitCell lap={lap} />
                       </td>
                       <td className="num">{formatLiters(lap.fuelUsed)}</td>
-                      <td className="num">{formatTemp(lap.lfTemp)}</td>
-                      <td className="num">{formatTemp(lap.rfTemp)}</td>
-                      <td className="num">{formatTemp(lap.lrTemp)}</td>
-                      <td className="num">{formatTemp(lap.rrTemp)}</td>
+                      {showTireTemps ? (
+                        <>
+                          <td className="num">{formatTemp(lap.lfTemp)}</td>
+                          <td className="num">{formatTemp(lap.rfTemp)}</td>
+                          <td className="num">{formatTemp(lap.lrTemp)}</td>
+                          <td className="num">{formatTemp(lap.rrTemp)}</td>
+                        </>
+                      ) : null}
                     </tr>
                   );
                 })}
