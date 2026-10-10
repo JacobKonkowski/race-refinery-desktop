@@ -1,7 +1,6 @@
-import { Fragment, useMemo } from "react";
+import { Fragment, useMemo, type CSSProperties } from "react";
 import type { LapSummary } from "../../shared/types";
 import {
-  deltaClass,
   formatDelta,
   formatLapTime,
   formatLiters,
@@ -61,6 +60,37 @@ function sectorClass(
   if (Math.abs(timeMs - bestMs) < 1) return "num fast";
   if (timeMs > bestMs) return "num slow";
   return "num";
+}
+
+/**
+ * Sorted Δ Best values of pace-eligible laps in a sub-session. The gradient is
+ * rank-based against these so one slow lap doesn't push everything else to
+ * green. Non-eligible laps (out-laps, offs) are excluded from the scale and
+ * slot in wherever their delta falls (clamping to full red when slower).
+ */
+function paceDeltaScale(laps: LapSummary[]): number[] {
+  return laps
+    .filter((l) => l.paceEligible && l.deltaToBestMs != null)
+    .map((l) => l.deltaToBestMs as number)
+    .sort((a, b) => a - b);
+}
+
+/** Green (fastest) → yellow → red (slowest) text color for a Δ Best cell. */
+function deltaGradientStyle(
+  deltaMs: number | null,
+  scale: number[],
+): CSSProperties | undefined {
+  if (deltaMs == null) return undefined;
+  let t = 0;
+  if (scale.length > 1) {
+    const faster = scale.filter((d) => d < deltaMs - 0.5).length;
+    t = Math.min(faster / (scale.length - 1), 1);
+  } else if (scale.length === 1 && deltaMs > scale[0] + 0.5) {
+    t = 1;
+  }
+  return {
+    color: `color-mix(in hsl, var(--color-slow) ${(t * 100).toFixed(1)}%, var(--color-fast))`,
+  };
 }
 
 /** Flag cell reflecting the sim's own pace judgement. */
@@ -148,6 +178,7 @@ export function LapTable({
         <tbody>
           {groups.map((group) => {
             const best = bestSectors(group.laps);
+            const deltaScale = paceDeltaScale(group.laps);
             return (
               <Fragment key={group.sessionNum}>
                 {groups.length > 1 ? (
@@ -201,7 +232,10 @@ export function LapTable({
                         </span>
                       </td>
                       <td className="num">{formatLapTime(lap.lapTimeMs)}</td>
-                      <td className={`num ${deltaClass(lap.deltaToBestMs)}`}>
+                      <td
+                        className="num"
+                        style={deltaGradientStyle(lap.deltaToBestMs, deltaScale)}
+                      >
                         {formatDelta(lap.deltaToBestMs)}
                       </td>
                       {sectorNums.map((n) => {
