@@ -321,14 +321,31 @@
 .analyze-map-cell {
   position: sticky;
   top: 0;
-  align-self: start;
+  min-height: 0;
   max-height: min(62vh, 720px);
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
 }
 
-.analyze-map-cell .analyze-trackmap,
-.analyze-map-cell .panel {
-  height: 100%;
+/* Stretch panel → body → map so the map fills the row beside Compare. */
+.analyze-map-cell > .panel,
+.analyze-map-cell .panel-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.analyze-map-cell .analyze-trackmap {
+  flex: 1;
+  min-height: 340px;
+  height: auto;
+  display: flex;
+}
+
+.analyze-map-cell .analyze-trackmap > .pw-trackmap {
+  flex: 1;
+  height: auto;
 }
 
 .analyze-lap-picker .panel-header {
