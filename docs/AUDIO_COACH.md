@@ -26,9 +26,9 @@ flowchart LR
 | `phrases.rs` + `phrases.txt` | Phrase registry: every clip key, its prompt, tier (Spotter / Engineer), and category |
 | `pack.rs` | `VoicePack` (load, status, save), `PackStore` (bundled + user + folder packs, resolve, create, delete) |
 | `pack_io.rs` | Clone, zip export / import, import a folder of WAVs |
-| `player.rs` | Renders a plan from pack clips (30 ms crossfades), built-in radio beep, missing-clip reporting |
+| `player.rs` | Renders a plan from pack clips (30 ms crossfades), limits the phrase for playback, built-in radio beep, missing-clip reporting |
 | `record.rs` | Mic capture (cpal), take saving with one-level undo |
-| `dsp.rs` | Take clean-up: resample, high-pass, trim, noise gate, normalize, fades |
+| `dsp.rs` | Take clean-up: resample, high-pass, trim, noise gate, normalize, fades. Playback limiting is separate from the saved take |
 | `preview.rs` | Voice Studio preview: preset callouts, composer, Spotter playlist |
 | `queue.rs` | Serializes playback; one line at a time |
 | `session_mode.rs` | Practice / qual / race behavior |
@@ -37,6 +37,8 @@ flowchart LR
 ### Which pack plays
 
 `audioCoachPackId` selects the pack: `default` (the bundled pack), a user pack id (a folder under `%LOCALAPPDATA%\race-refinery\voice-packs\`), or an absolute path to a linked folder pack. An unknown or unreadable reference falls back to the bundled pack with a warning in the log. The coach re-resolves the pack and volume before every callout, so switching packs in Settings or recording new clips takes effect on the next line without restarting the coach.
+
+Playback raises each rendered phrase so its voiced frames sit near −12 dBFS, and a lookahead limiter holds peaks at about −1 dBFS. Recording-time normalize still stores takes near −18 dBFS; the limiter does not rewrite them. The volume slider scales that playback level from silence to full. Voice Studio preview uses the same render path, so a test line matches the coach.
 
 The bundled pack ships in `src-tauri/resources/audio/coach/default/` (bundled via `bundle.resources` in `tauri.conf.json`). At startup the host passes the resolved folder (Tauri resource dir in a packaged build, the `src-tauri` tree under `tauri dev`) to `AudioCoachService::set_clips_dir`. It is read-only in the app and holds the maintainer's recorded voice, with a clip for every registry phrase.
 
