@@ -7,7 +7,7 @@ use std::time::Duration;
 use rodio::buffer::SamplesBuffer;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
 
-use super::dsp::PACK_RATE;
+use super::dsp::{limit_for_playback, PACK_RATE};
 use super::pack::VoicePack;
 use super::phrases::RADIO_BEEP_KEY;
 use super::speech::{SpeechPlan, SpeechUnit};
@@ -74,7 +74,8 @@ pub fn render_plan(pack: &VoicePack, plan: &SpeechPlan) -> Rendered {
     let mut missing = Vec::new();
     let mut spoken = 0;
     let mut flush = |run: &mut Option<ClipRun>| {
-        if let Some(r) = run.take().filter(|r| !r.samples.is_empty()) {
+        if let Some(mut r) = run.take().filter(|r| !r.samples.is_empty()) {
+            limit_for_playback(&mut r.samples, r.rate);
             runs.push((r.rate, r.samples));
         }
     };
