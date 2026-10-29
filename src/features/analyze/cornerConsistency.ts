@@ -13,10 +13,14 @@ const APEX_MATCH_PCT = 0.01;
 const MIN_START_PCT = 0.05;
 const MIN_END_PCT = 0.95;
 
-/** A complete, non-pit lap from the given sub-session: fair to compare brake points on. */
-export function isCleanLap(lap: LapSummary, sessionNum: number): boolean {
+/**
+ * A complete, non-pit lap: fair to compare brake points on.
+ * Pass `sessionNum` to keep only that sub-session. Omit it for a saved set,
+ * which mixes outings on the same track.
+ */
+export function isCleanLap(lap: LapSummary, sessionNum?: number): boolean {
   return (
-    lap.sessionNum === sessionNum &&
+    (sessionNum == null || lap.sessionNum === sessionNum) &&
     !lap.onPitRoadStart &&
     !lap.onPitRoadEnd &&
     lap.lapDistPctMin != null &&

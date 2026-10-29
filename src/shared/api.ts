@@ -22,6 +22,13 @@ import type {
   LiveStatus,
   MonitorOverlayStatus,
   NativeVrStatus,
+  CategoryMatch,
+  CategoryRule,
+  LapCategory,
+  LapSetDetail,
+  LapSetSummary,
+  LibrarySession,
+  SetLap,
   SessionDetail,
   SessionSummary,
   TrackOutline,
@@ -48,6 +55,55 @@ export async function listSessions(): Promise<SessionSummary[]> {
 
 export async function getSession(sessionId: number): Promise<SessionDetail | null> {
   return invoke("get_session", { sessionId });
+}
+
+export async function listLibrary(): Promise<LibrarySession[]> {
+  return invoke("list_library");
+}
+
+export async function listLapSets(): Promise<LapSetSummary[]> {
+  return invoke("list_lap_sets");
+}
+
+export async function getLapSet(setId: number): Promise<LapSetDetail | null> {
+  return invoke("get_lap_set", { setId });
+}
+
+export async function loadLaps(lapIds: number[]): Promise<SetLap[]> {
+  return invoke("load_laps", { lapIds });
+}
+
+export async function saveLapSet(
+  id: number | null,
+  name: string,
+  track: string,
+  lapIds: number[],
+): Promise<number> {
+  return invoke("save_lap_set", { id, name, track, lapIds });
+}
+
+export async function deleteLapSet(setId: number): Promise<boolean> {
+  return invoke("delete_lap_set", { setId });
+}
+
+export async function listLapCategories(): Promise<LapCategory[]> {
+  return invoke("list_lap_categories");
+}
+
+export async function saveLapCategory(
+  id: number | null,
+  name: string,
+  rule: CategoryRule,
+): Promise<number> {
+  return invoke("save_lap_category", { id, name, rule });
+}
+
+export async function deleteLapCategory(categoryId: number): Promise<boolean> {
+  return invoke("delete_lap_category", { categoryId });
+}
+
+export async function matchLaps(rule: CategoryRule): Promise<CategoryMatch[]> {
+  return invoke("match_laps", { rule });
 }
 
 export async function getLapTraces(lapIds: number[]): Promise<LapTrace[]> {

@@ -1,8 +1,8 @@
 # Data model
 
-SQLite at `%LOCALAPPDATA%\race-refinery\` (see `storage/db.rs`). **`PRAGMA user_version = 10`**.
+SQLite at `%LOCALAPPDATA%\race-refinery\` (see `storage/db.rs`). **`PRAGMA user_version = 11`**.
 
-Opening a pre-v2 DB drops analysis tables (`sessions`, `laps`, `sectors`, `lap_traces`) and requires reimport. v2 → v10 are additive migrations (GPS, elapsed time, raw pedals, ABS, RPM, dynamics, tire pressures, traffic events), so existing sessions survive — new columns stay `NULL` until re-imported.
+Opening a pre-v2 DB drops analysis tables (`sessions`, `laps`, `sectors`, `lap_traces`) and requires reimport. v2 → v11 are additive migrations (GPS, elapsed time, raw pedals, ABS, RPM, dynamics, tire pressures, traffic events, lap sets and categories), so existing sessions survive — new columns stay `NULL` until re-imported.
 
 ## Tables
 
@@ -71,6 +71,14 @@ Later nullable REAL channels on `lap_traces` (reimport to populate):
 Sparse per-lap rows `{ dist_pct, kind }` where another car was within ~1.5% of lap distance
 of the player (sampled from `CarIdxLapDistPct` during import, not every frame). Used to
 tag laps and corners when another car was nearby.
+
+### `lap_sets` and `lap_set_members` (schema v11)
+
+A set is a named list of lap ids that share one track. Members store `position`. Deleting the set or the lap removes the membership (`ON DELETE CASCADE`). Importing a new session does not change a set. Loading a set reports each lap's delta against the fastest pace-eligible lap in that set. Analyze can still save/update a set from the selection workspace; sidebar browse of saved sets is deferred.
+
+### `lap_categories` (schema v11)
+
+A category stores `name` and `rule_json`, not lap ids. The rule is re-run when matched. Every field is optional and combined with AND: track, car, session type, pace-eligible only, exclude pit laps, within N milliseconds of that lap's own sub-session best, and session date on or after a day. Sidebar filter authoring and the saved-filter list are deferred; the table and `match_laps` API remain.
 
 ## Settings
 

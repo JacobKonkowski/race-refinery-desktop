@@ -21,6 +21,11 @@ interface Props {
   onFocusDistPct?: (pct: number) => void;
   /** Candidate traffic hits (lap fraction) for tagging affected corners. */
   trafficPcts?: number[];
+  /**
+   * When false, the scatter uses every complete off-pit lap in `laps`.
+   * A saved set mixes sub-sessions, so it does not share one session number.
+   */
+  sameSubsession?: boolean;
 }
 
 type Loaded =
@@ -56,6 +61,7 @@ export function CornerTable({
   onHoverDistPct,
   onFocusDistPct,
   trafficPcts = [],
+  sameSubsession = true,
 }: Props) {
   const [sortByLoss, setSortByLoss] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -72,8 +78,11 @@ export function CornerTable({
   }, [corners, trafficPcts]);
 
   const cleanLapIds = useMemo(
-    () => laps.filter((l) => isCleanLap(l, reference.sessionNum)).map((l) => l.id),
-    [laps, reference.sessionNum],
+    () =>
+      laps
+        .filter((l) => isCleanLap(l, sameSubsession ? reference.sessionNum : undefined))
+        .map((l) => l.id),
+    [laps, reference.sessionNum, sameSubsession],
   );
   const needsFetch = expanded != null && loaded?.referenceLapId !== reference.id;
 
