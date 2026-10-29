@@ -311,42 +311,6 @@
   padding: 0;
   flex: 0 0 auto;
 }
-.selection-save-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 16px 12px;
-}
-.selection-title-input {
-  width: 240px;
-  max-width: 100%;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  color: var(--color-text);
-  padding: 6px 8px;
-  font-size: 16px;
-  font-weight: 600;
-}
-.builder {
-  margin: 12px;
-}
-.builder-actions {
-  display: flex;
-  gap: 8px;
-}
-.builder-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.builder-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
 .builder-field input,
 .builder-field select {
   background: var(--color-bg);

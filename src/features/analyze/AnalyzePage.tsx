@@ -2,14 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import {
   checkIracingConfig,
   confirmDialog,
-  deleteLapSet,
   deleteSession,
   getSession,
   listLibrary,
   loadLaps,
   onImportComplete,
   reimportSession,
-  saveLapSet,
 } from "../../shared/api";
 import { formatDate } from "../../shared/format";
 import { showToast } from "../../shared/toast";
@@ -38,8 +36,6 @@ type Workspace =
   | {
       kind: "selection";
       lapIds: number[];
-      setId: number | null;
-      name: string;
       track: string;
     };
 
@@ -102,7 +98,6 @@ export function AnalyzePage() {
   const [workspace, setWorkspace] = useState<Workspace>({ kind: "session" });
   const [selectionRows, setSelectionRows] = useState<SetLap[]>([]);
   const [selectionError, setSelectionError] = useState<string | null>(null);
-  const [setName, setSetName] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setSession] = useState<SessionDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -383,29 +378,22 @@ export function AnalyzePage() {
 
   const commitSelection = useCallback(
     (ids: number[], track: string) => {
-      const saved = workspace.kind === "selection" ? workspace : null;
       if (ids.length === 0) {
-        setWorkspace({ kind: "selection", lapIds: [], setId: null, name: "", track: "" });
+        setWorkspace({ kind: "selection", lapIds: [], track: "" });
         return;
       }
       const whole = library.find((row) => {
         const lapIds = row.laps.map((lap) => lap.id);
         return lapIds.length === ids.length && lapIds.every((id) => ids.includes(id));
       });
-      if (whole && (saved == null || saved.setId == null)) {
+      if (whole) {
         setWorkspace({ kind: "session" });
         selectSession(whole.session.id);
         return;
       }
-      setWorkspace({
-        kind: "selection",
-        lapIds: ids,
-        track,
-        setId: saved && saved.track === track ? saved.setId : null,
-        name: saved ? (saved.track === track ? saved.name : "") : setName,
-      });
+      setWorkspace({ kind: "selection", lapIds: ids, track });
     },
-    [workspace, library, selectSession, setName],
+    [library, selectSession],
   );
 
   const toggleLap = useCallback(
@@ -487,51 +475,6 @@ export function AnalyzePage() {
     [library, currentSelection, commitSelection],
   );
 
-  const saveSelection = useCallback(async () => {
-    const snap = currentSelection();
-    const name = (workspace.kind === "selection" ? workspace.name : setName).trim();
-    if (!name) {
-      showToast("Set name is required.", "error");
-      return;
-    }
-    if (snap.ids.length === 0 || !snap.track) {
-      showToast("Check at least one lap.", "error");
-      return;
-    }
-    const existingId = workspace.kind === "selection" ? workspace.setId : null;
-    try {
-      const id = await saveLapSet(existingId, name, snap.track, snap.ids);
-      await refreshLibrary();
-      setWorkspace({
-        kind: "selection",
-        lapIds: snap.ids,
-        setId: id,
-        name,
-        track: snap.track,
-      });
-      showToast("Selection saved.", "success");
-    } catch (e) {
-      showToast(String(e), "error");
-    }
-  }, [currentSelection, workspace, setName, refreshLibrary]);
-
-  const handleDeleteSet = useCallback(
-    async (setId: number) => {
-      const ok = await confirmDialog("Delete this set? The laps stay imported.", "Delete set");
-      if (!ok) return;
-      try {
-        await deleteLapSet(setId);
-        await refreshLibrary();
-        setWorkspace((prev) =>
-          prev.kind === "selection" && prev.setId === setId ? { kind: "session" } : prev,
-        );
-      } catch (e) {
-        showToast(String(e), "error");
-      }
-    },
-    [refreshLibrary],
-  );
-
   const laps = detail?.laps ?? [];
   const stats = useMemo(() => computeSessionStats(laps), [laps]);
   const sessionTypes = useMemo(
@@ -588,31 +531,11 @@ export function AnalyzePage() {
               header={
                 <div className="session-header">
                   <div>
-                    <input
-                      className="selection-title-input"
-                      value={selection.name}
-                      onChange={(e) => {
-                        const name = e.target.value;
-                        setWorkspace((prev) => (prev.kind === "selection" ? { ...prev, name } : prev));
-                      }}
-                      placeholder="Selection name"
-                      aria-label="Selection name"
-                    />
-                    <div className="muted">{selection.track}</div>
-                  </div>
-                  <div className="builder-actions">
-                    <button type="button" className="btn" onClick={() => void saveSelection()}>
-                      Save
-                    </button>
-                    {selection.setId != null ? (
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-danger"
-                        onClick={() => void handleDeleteSet(selection.setId ?? 0)}
-                      >
-                        Delete
-                      </button>
-                    ) : null}
+                    <h2>Selection</h2>
+                    <div className="muted">
+                      {selection.track} · {selection.lapIds.length} lap
+                      {selection.lapIds.length === 1 ? "" : "s"}
+                    </div>
                   </div>
                 </div>
               }
@@ -649,27 +572,13 @@ export function AnalyzePage() {
         ) : (
           <CompareWorkspace
             header={
-              <>
-                <SessionHeader
-                  session={detail.session}
-                  stats={stats}
-                  sessionTypes={sessionTypes}
-                  onReimport={() => handleReimport(detail.session.id)}
-                  reimporting={reimporting}
-                />
-                <div className="selection-save-row">
-                  <input
-                    className="selection-title-input"
-                    value={setName}
-                    onChange={(e) => setSetName(e.target.value)}
-                    placeholder="Selection name"
-                    aria-label="Selection name"
-                  />
-                  <button type="button" className="btn" onClick={() => void saveSelection()}>
-                    Save
-                  </button>
-                </div>
-              </>
+              <SessionHeader
+                session={detail.session}
+                stats={stats}
+                sessionTypes={sessionTypes}
+                onReimport={() => handleReimport(detail.session.id)}
+                reimporting={reimporting}
+              />
             }
             notice={
               !hasEligible && laps.length > 0 && !okChannelPresent ? <ConfigBanner /> : null

@@ -15,7 +15,7 @@ Race Refinery exposes features via `src/features/registry.ts`: **Analyze**, **Li
 | Re-import | Session header / sidebar buttons re-analyze IBTs still on disk with the latest pipeline (`reimport_session_cmd`) |
 | Fuel / tires | Fuel use, tire temps, and pressures (secondary section). Hidden unless the selection is one whole session |
 | Insights | Session insights strip (stdev, sector gap, fuel vs median). Hidden unless the selection is one whole session |
-| Lap sets | Backend + workspace Save keep a named lap list on one track (`lap_sets`). Sidebar browse/open of saved sets is not shown in this cut |
+| Lap sets | Schema/API for named lap lists (`lap_sets`) remain. Workspace Save and sidebar Sets browse are both hidden until reopen UI returns |
 | Filters | Backend categories (`lap_categories` / `match_laps`) remain; sidebar filter authoring and saved-filter list are not shown in this cut |
 
 Phantom reset buckets and sticky duplicate lap times are cleaned in the analysis pipeline (and when loading older sessions). See [ANALYSIS.md](ANALYSIS.md).
