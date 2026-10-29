@@ -48,6 +48,7 @@ describe("isCleanLap", () => {
     expect(isCleanLap(lap({ lapDistPctMax: 0.8 }), 2)).toBe(false);
     expect(isCleanLap(lap({ lapDistPctMax: null }), 2)).toBe(false);
     expect(isCleanLap(lap(), 1)).toBe(false);
+    expect(isCleanLap(lap({ sessionNum: 9 }))).toBe(true);
   });
 });
 
