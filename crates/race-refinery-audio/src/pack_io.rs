@@ -120,7 +120,9 @@ pub fn import_zip(store: &PackStore, path: &Path) -> anyhow::Result<(VoicePack, 
     let mut read_entry = |index: usize| -> anyhow::Result<Vec<u8>> {
         let mut entry = archive.by_index(index)?;
         if entry.size() > MAX_CLIP_BYTES {
-            let name = entry.name().unwrap_or(std::borrow::Cow::Borrowed("<invalid>"));
+            let name = entry
+                .name()
+                .unwrap_or(std::borrow::Cow::Borrowed("<invalid>"));
             anyhow::bail!("{name} is too large");
         }
         let mut bytes = Vec::with_capacity(entry.size() as usize);
