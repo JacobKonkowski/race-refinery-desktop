@@ -39,6 +39,8 @@ interface Props {
   onHoverDistPct?: (pct: number | null) => void;
   /** Corner row click: zoom the track map to that lap fraction. */
   onFocusDistPct?: (pct: number) => void;
+  /** Saved sets scatter every complete off-pit lap, not one sub-session. */
+  sameSubsession?: boolean;
 }
 
 const ASSIST_NAMES: Record<AssistKind, string> = {
@@ -78,6 +80,7 @@ export function ComparePanel({
   onChangeReference,
   onHoverDistPct,
   onFocusDistPct,
+  sameSubsession = true,
 }: Props) {
   const [comparison, setComparison] = useState<LapComparison | null>(null);
   const [loading, setLoading] = useState(false);
@@ -245,6 +248,7 @@ export function ComparePanel({
                 trafficPcts={(comparison.candidateTraffic ?? []).map((t) => t.distPct)}
                 onHoverDistPct={onHoverDistPct}
                 onFocusDistPct={onFocusDistPct}
+                sameSubsession={sameSubsession}
               />
             )}
 

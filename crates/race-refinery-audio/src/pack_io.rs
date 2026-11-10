@@ -109,7 +109,8 @@ pub fn import_zip(store: &PackStore, path: &Path) -> anyhow::Result<(VoicePack, 
         if entry.is_dir() {
             continue;
         }
-        if let Some(p) = safe_entry_path(entry.name()) {
+        let Ok(name) = entry.name() else { continue };
+        if let Some(p) = safe_entry_path(&name) {
             files.push((i, p));
         }
     }
@@ -119,7 +120,10 @@ pub fn import_zip(store: &PackStore, path: &Path) -> anyhow::Result<(VoicePack, 
     let mut read_entry = |index: usize| -> anyhow::Result<Vec<u8>> {
         let mut entry = archive.by_index(index)?;
         if entry.size() > MAX_CLIP_BYTES {
-            anyhow::bail!("{} is too large", entry.name());
+            let name = entry
+                .name()
+                .unwrap_or(std::borrow::Cow::Borrowed("<invalid>"));
+            anyhow::bail!("{name} is too large");
         }
         let mut bytes = Vec::with_capacity(entry.size() as usize);
         entry.read_to_end(&mut bytes)?;

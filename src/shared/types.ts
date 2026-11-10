@@ -1,6 +1,6 @@
 /**
  * Shared serde types for the Tauri IPC boundary (`camelCase` JSON).
- * Rust definitions: `src-tauri/src/storage/models.rs`, `analysis/compare.rs`,
+ * Rust definitions: `crates/race-refinery-storage/src/models.rs`, `analysis/compare.rs`,
  * and (when registered) live / settings / audio / vr modules.
  *
  * Lap facts mirror iRacing exactly — the sim's `_OK` flags, pit-road samples, and
@@ -64,6 +64,71 @@ export interface LapSummary {
 export interface SessionDetail {
   session: SessionSummary;
   laps: LapSummary[];
+}
+
+export interface LibraryLap {
+  id: number;
+  lapNumber: number;
+  lapTimeMs: number | null;
+  paceEligible: boolean;
+  sessionType: string;
+  onPitRoadStart: boolean;
+  onPitRoadEnd: boolean;
+  /** Versus the fastest pace-eligible lap in this lap's own sub-session. */
+  deltaToBestMs: number | null;
+}
+
+export interface LibrarySession {
+  session: SessionSummary;
+  laps: LibraryLap[];
+}
+
+export interface LapSetSummary {
+  id: number;
+  name: string;
+  track: string;
+  createdAt: string;
+  lapCount: number;
+}
+
+export interface SetLap {
+  sessionId: number;
+  car: string;
+  sessionDate: string;
+  lap: LapSummary;
+}
+
+export interface LapSetDetail {
+  set: LapSetSummary;
+  laps: SetLap[];
+}
+
+/** Optional filters, combined with AND. Empty or null fields are ignored. */
+export interface CategoryRule {
+  track?: string | null;
+  car?: string | null;
+  sessionType?: string | null;
+  paceEligibleOnly?: boolean | null;
+  excludePit?: boolean | null;
+  /** Milliseconds off that lap's own sub-session best. */
+  maxDeltaToBestMs?: number | null;
+  /** `YYYY-MM-DD`. Sessions on or after this day. */
+  since?: string | null;
+}
+
+export interface LapCategory {
+  id: number;
+  name: string;
+  rule: CategoryRule;
+  createdAt: string;
+}
+
+export interface CategoryMatch {
+  sessionId: number;
+  track: string;
+  car: string;
+  sessionDate: string;
+  lap: LapSummary;
 }
 
 export interface TracePoint {

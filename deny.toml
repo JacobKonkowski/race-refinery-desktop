@@ -9,6 +9,14 @@ all-features = true
 # if a *workspace* crate itself is unmaintained.
 unmaintained = "workspace"
 yanked = "warn"
+# race-refinery-audio uses zip 9. tauri-plugin-updater 2.x still depends on zip ^4,
+# which is vulnerable to RUSTSEC-2026-0367/0368/0369 (extract / SUID / symlink).
+# Drop these once the updater moves to zip >= 9.
+ignore = [
+  { id = "RUSTSEC-2026-0367", reason = "Blocked on tauri-plugin-updater zip ^4; our pack I/O uses zip 9 and does not call extract()" },
+  { id = "RUSTSEC-2026-0368", reason = "Blocked on tauri-plugin-updater zip ^4; our pack I/O uses zip 9 and does not call extract()" },
+  { id = "RUSTSEC-2026-0369", reason = "Blocked on tauri-plugin-updater zip ^4; our pack I/O uses zip 9 and does not call extract()" },
+]
 
 [licenses]
 allow = [
