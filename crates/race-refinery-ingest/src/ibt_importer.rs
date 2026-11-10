@@ -167,29 +167,69 @@ pub fn parse_ibt_file_fast(
 }
 
 fn parse_session_info(reader: &IbtReader, path: &Path) -> Result<SessionInfo> {
-    // IbtReader::session_yaml uses strict UTF-8; iRacing session info is often Latin-1.
-    if let Ok(Some(yaml)) = reader.session_yaml() {
-        if let Ok(session) = SessionInfo::parse(&yaml) {
-            return Ok(session);
-        }
-    }
-
+    // iRacing writes this block as Windows-1252. Pitwall's readers decode it with
+    // `from_utf8_lossy`, which turns ó and é into U+FFFD.
     let data = std::fs::read(path)
         .with_context(|| format!("re-read IBT for session YAML: {}", path.display()))?;
     let header = reader.header();
-    if header.session_info_len <= 0 {
+    if header.session_info_offset < 0 || header.session_info_len <= 0 {
         anyhow::bail!("IBT contains no session info block");
     }
+    let start = header.session_info_offset as usize;
+    let end = start.saturating_add(header.session_info_len as usize);
+    if end > data.len() {
+        anyhow::bail!("session info block is outside the IBT");
+    }
+    let yaml = decode_iracing_text(&data[start..end]);
+    if yaml.trim().is_empty() {
+        anyhow::bail!("IBT session info block is empty");
+    }
+    SessionInfoParser::new()
+        .parse(&yaml)
+        .context("parse session info")
+}
 
-    let mut parser = SessionInfoParser::new();
-    parser
-        .parse_from_memory(
-            &data,
-            header.session_info_offset,
-            header.session_info_len,
-            header.session_info_update.max(0) as u32,
-        )
-        .context("parse session info (Latin-1 tolerant)")
+/// UTF-8 when the bytes are valid UTF-8; otherwise Windows-1252.
+fn decode_iracing_text(bytes: &[u8]) -> String {
+    let end = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
+    let bytes = &bytes[..end];
+    if let Ok(text) = std::str::from_utf8(bytes) {
+        return text.to_string();
+    }
+    bytes.iter().copied().map(windows_1252_char).collect()
+}
+
+fn windows_1252_char(byte: u8) -> char {
+    match byte {
+        0x80 => '\u{20AC}',
+        0x82 => '\u{201A}',
+        0x83 => '\u{0192}',
+        0x84 => '\u{201E}',
+        0x85 => '\u{2026}',
+        0x86 => '\u{2020}',
+        0x87 => '\u{2021}',
+        0x88 => '\u{02C6}',
+        0x89 => '\u{2030}',
+        0x8A => '\u{0160}',
+        0x8B => '\u{2039}',
+        0x8C => '\u{0152}',
+        0x8E => '\u{017D}',
+        0x91 => '\u{2018}',
+        0x92 => '\u{2019}',
+        0x93 => '\u{201C}',
+        0x94 => '\u{201D}',
+        0x95 => '\u{2022}',
+        0x96 => '\u{2013}',
+        0x97 => '\u{2014}',
+        0x98 => '\u{02DC}',
+        0x99 => '\u{2122}',
+        0x9A => '\u{0161}',
+        0x9B => '\u{203A}',
+        0x9C => '\u{0153}',
+        0x9E => '\u{017E}',
+        0x9F => '\u{0178}',
+        other => other as char,
+    }
 }
 
 fn report_progress(progress: &Option<ProgressCallback>, pct: f64, message: impl Into<String>) {
@@ -356,4 +396,33 @@ pub fn scan_ibt_files(dir: &Path) -> Result<Vec<PathBuf>> {
     }
     files.sort();
     Ok(files)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::decode_iracing_text;
+
+    const INTERLAGOS: &str = "Autódromo José Carlos Pace";
+
+    #[test]
+    fn windows_1252_track_name_keeps_accents() {
+        // ó is 0xF3 and é is 0xE9 in the sim's session block.
+        let mut bytes = Vec::new();
+        for ch in INTERLAGOS.chars() {
+            match ch {
+                'ó' => bytes.push(0xF3),
+                'é' => bytes.push(0xE9),
+                other => bytes.push(u8::try_from(u32::from(other)).unwrap()),
+            }
+        }
+        bytes.push(0);
+        assert_eq!(decode_iracing_text(&bytes), INTERLAGOS);
+    }
+
+    #[test]
+    fn utf8_track_name_is_left_unchanged() {
+        let mut bytes = INTERLAGOS.as_bytes().to_vec();
+        bytes.push(0);
+        assert_eq!(decode_iracing_text(&bytes), INTERLAGOS);
+    }
 }
