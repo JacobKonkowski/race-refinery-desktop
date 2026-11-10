@@ -13,8 +13,16 @@ pub const PACK_RATE: u32 = 22_050;
 const FRAME_MS: usize = 10;
 /// Speech loudness target (RMS of voiced frames), about -18 dBFS.
 const TARGET_RMS: f32 = 0.126;
-/// Peak ceiling after normalization, about -1 dBFS.
+/// Playback loudness target (RMS of voiced frames), about -12 dBFS.
+const PLAYBACK_RMS: f32 = 0.251;
+/// Makeup is capped so a near-silent clip cannot explode, about +12 dB.
+const MAX_MAKEUP: f32 = 4.0;
+/// Peak ceiling after normalization and playback limiting, about -1 dBFS.
 const PEAK_CEILING: f32 = 0.89;
+/// Lookahead, attack, and release for the playback limiter.
+const LIMIT_LOOKAHEAD_MS: usize = 5;
+const LIMIT_ATTACK_S: f32 = 0.0005;
+const LIMIT_RELEASE_S: f32 = 0.08;
 /// Silence kept before the first and after the last voiced frame.
 const LEAD_MS: usize = 40;
 const TAIL_MS: usize = 90;
@@ -146,6 +154,60 @@ pub fn normalize(samples: &mut [f32], rate: u32) {
     }
 }
 
+/// Raise a rendered phrase toward [`PLAYBACK_RMS`] and keep peaks at
+/// [`PEAK_CEILING`]. A phrase already at or above the target is not turned
+/// down. Silence is left untouched. Gain reduction looks ahead and eases back
+/// out on the release, so peaks are scaled rather than clipped.
+pub fn limit_for_playback(samples: &mut [f32], rate: u32) {
+    if samples.is_empty() || rate == 0 {
+        return;
+    }
+    let rms = frame_rms(samples, rate);
+    let threshold = voice_threshold(&rms);
+    let voiced: Vec<f32> = rms.into_iter().filter(|r| *r > threshold).collect();
+    if voiced.is_empty() {
+        return;
+    }
+    let loudness = (voiced.iter().map(|r| r * r).sum::<f32>() / voiced.len() as f32).sqrt();
+    if loudness <= 1.0e-8 {
+        return;
+    }
+    let makeup = if loudness >= PLAYBACK_RMS {
+        1.0
+    } else {
+        (PLAYBACK_RMS / loudness).min(MAX_MAKEUP)
+    };
+
+    let lookahead = (rate as usize * LIMIT_LOOKAHEAD_MS / 1000).max(1);
+    let attack = 1.0 - (-1.0 / (rate as f32 * LIMIT_ATTACK_S)).exp();
+    let release = 1.0 - (-1.0 / (rate as f32 * LIMIT_RELEASE_S)).exp();
+    let n = samples.len();
+    let mut required = vec![1.0_f32; n];
+    for i in 0..n {
+        let end = (i + lookahead).min(n);
+        let mut pk = 0.0_f32;
+        for s in &samples[i..end] {
+            pk = pk.max(s.abs());
+        }
+        let gained = pk * makeup;
+        if gained > PEAK_CEILING {
+            required[i] = PEAK_CEILING / gained;
+        }
+    }
+
+    let mut gain = required[0];
+    for i in 0..n {
+        let target = required[i];
+        let k = if target < gain { attack } else { release };
+        gain += (target - gain) * k;
+        let sample_abs = samples[i].abs() * makeup;
+        if sample_abs > PEAK_CEILING {
+            gain = gain.min(PEAK_CEILING / sample_abs);
+        }
+        samples[i] *= makeup * gain;
+    }
+}
+
 /// Short fades so trimmed edges never click.
 fn fade_edges(samples: &mut [f32], rate: u32) {
     let n = (rate as usize * 5 / 1000).min(samples.len() / 2);
@@ -274,6 +336,33 @@ mod tests {
         let rms = (quiet.iter().map(|s| s * s).sum::<f32>() / quiet.len() as f32).sqrt();
         assert!((rms - TARGET_RMS).abs() < 0.01, "{rms}");
         assert!(peak(&quiet) <= PEAK_CEILING + 1e-4);
+    }
+
+    #[test]
+    fn limit_raises_a_quiet_tone_toward_playback_level() {
+        let rate = PACK_RATE;
+        let mut quiet = tone(rate, 500, 0.1);
+        limit_for_playback(&mut quiet, rate);
+        let rms = (quiet.iter().map(|s| s * s).sum::<f32>() / quiet.len() as f32).sqrt();
+        assert!((rms - PLAYBACK_RMS).abs() < 0.02, "{rms}");
+        assert!(peak(&quiet) <= PEAK_CEILING + 1e-4, "{}", peak(&quiet));
+    }
+
+    #[test]
+    fn limit_holds_a_hot_tone_under_the_ceiling() {
+        let rate = PACK_RATE;
+        let mut hot = tone(rate, 500, 1.0);
+        limit_for_playback(&mut hot, rate);
+        let pk = peak(&hot);
+        assert!(pk <= PEAK_CEILING + 1e-4, "{pk}");
+        assert!(pk > 0.5, "{pk}");
+    }
+
+    #[test]
+    fn limit_leaves_silence_unchanged() {
+        let mut silent = vec![0.0; PACK_RATE as usize];
+        limit_for_playback(&mut silent, PACK_RATE);
+        assert!(silent.iter().all(|s| *s == 0.0));
     }
 
     #[test]
