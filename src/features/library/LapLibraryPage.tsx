@@ -11,8 +11,8 @@ import { navigateToFeature } from "../../shared/navigation";
 import { showToast } from "../../shared/toast";
 import type { LibrarySession } from "../../shared/types";
 import { useImportActions } from "../analyze/useImportActions";
-import { LibraryTreePanel } from "./LibraryTreePanel";
 import { SessionLapList } from "./SessionLapList";
+import { SessionTablePanel } from "./SessionTablePanel";
 
 export function LapLibraryPage() {
   const [library, setLibrary] = useState<LibrarySession[]>([]);
@@ -167,7 +167,7 @@ export function LapLibraryPage() {
         </div>
       ) : (
         <div className="library-master-detail">
-          <LibraryTreePanel
+          <SessionTablePanel
             library={library}
             focusedSessionId={focusedSessionId}
             onFocusSession={setFocusedSessionId}

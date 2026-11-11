@@ -6,7 +6,7 @@ Race Refinery exposes features via `src/features/registry.ts`: **Lap Library**, 
 
 | Capability | Notes |
 |------------|--------|
-| Browse tree | Car → Track → Session on the left; focused session’s lap list on the right. Search and hide-no-pace-eligible. No Sets chrome, draft bag, or membership checkboxes on this tab |
+| Session table | ~70% sortable/filterable session table (date, track, car, type, lap count, best pace) + ~30% focused lap list. Search, column filters, hide-no-pace-eligible. No Sets chrome, draft bag, or membership checkboxes on this tab |
 | Open flow B | Session **Open in Analyze** or lap row click opens that outing in Analyze |
 | Sets | Deferred to a separate tab later (tables/API remain) |
 | Import | File / folder pickers; folder watcher auto-import |
