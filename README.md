@@ -44,12 +44,12 @@ The UI is a feature shell with **Lap Library**, **Analyze**, **Live**, **Voice S
 
 ### Lap Library
 
-- Import IBTs (watcher + manual), browse track → car → session → lap
-- Build a selection, save/open/rename/delete **Sets**, open into Analyze
+- Import IBTs (watcher + manual), browse car → track → session with a focused lap list
+- Open a session or lap into Analyze (Sets UI deferred to a later tab)
 
 ### Analyze (post-session)
 
-- Workspace for the session or selection opened from Lap Library (no library sidebar)
+- Workspace for the session opened from Lap Library (no library sidebar)
 - Lap table with P/Q/R grouping, sectors, and `paceEligible` laps (official time, sim `_OK` flags, and near-full distance coverage)
 - Two-lap trace compare via `compare_laps`
 - Fuel / tire panels from stored lap facts

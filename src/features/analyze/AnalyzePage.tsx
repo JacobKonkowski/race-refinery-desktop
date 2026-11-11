@@ -485,8 +485,7 @@ function EmptyAnalyze({ config }: { config: IracingConfigCheck | null }) {
     <div className="empty-state">
       <h2>Nothing open yet</h2>
       <p className="muted">
-        Open a session or lap from Lap Library, or build a selection / set and choose{" "}
-        <strong>Open in Analyze</strong>.
+        Open a session or lap from Lap Library to start comparing.
       </p>
       {config && !config.diskEnabled ? (
         <p className="muted">

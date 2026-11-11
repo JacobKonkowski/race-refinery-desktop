@@ -1,36 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   confirmDialog,
-  deleteLapSet,
   deleteSession,
-  getLapSet,
-  listLapSets,
   listLibrary,
   onImportComplete,
   reimportSession,
-  saveLapSet,
 } from "../../shared/api";
-import {
-  getLibraryBag,
-  openSelectionInAnalyze,
-  openSessionInAnalyze,
-  setLibraryBag,
-  subscribeLibraryBag,
-  type LibraryBag,
-} from "../../shared/analyzeOpen";
+import { openSessionInAnalyze } from "../../shared/analyzeOpen";
 import { navigateToFeature } from "../../shared/navigation";
 import { showToast } from "../../shared/toast";
-import type { LapSetSummary, LibrarySession } from "../../shared/types";
+import type { LibrarySession } from "../../shared/types";
 import { useImportActions } from "../analyze/useImportActions";
-import { SessionLapChecklist } from "./SessionLapChecklist";
-import { SessionListPanel } from "./SessionListPanel";
-import { SetsPanel } from "./SetsPanel";
+import { LibraryTreePanel } from "./LibraryTreePanel";
+import { SessionLapList } from "./SessionLapList";
 
 export function LapLibraryPage() {
   const [library, setLibrary] = useState<LibrarySession[]>([]);
-  const [sets, setSets] = useState<LapSetSummary[]>([]);
-  const [bag, setBag] = useState<LibraryBag>(() => getLibraryBag());
-  const [saveName, setSaveName] = useState(() => getLibraryBag().name);
   const [focusedSessionId, setFocusedSessionId] = useState<number | null>(null);
   const [reimporting, setReimporting] = useState(false);
   const bulkReimport = useRef(false);
@@ -44,24 +29,12 @@ export function LapLibraryPage() {
     return nextLibrary;
   }, []);
 
-  const refreshSets = useCallback(async (): Promise<LapSetSummary[]> => {
-    const next = await listLapSets();
-    setSets(next);
-    return next;
-  }, []);
-
-  useEffect(() => subscribeLibraryBag(() => setBag(getLibraryBag())), []);
-
   useEffect(() => {
     refreshLibrary().catch((e) => {
       console.error("listLibrary failed", e);
       showToast(`Failed to list sessions: ${String(e)}`, "error");
     });
-    refreshSets().catch((e) => {
-      console.error("listLapSets failed", e);
-      showToast(`Failed to list sets: ${String(e)}`, "error");
-    });
-  }, [refreshLibrary, refreshSets]);
+  }, [refreshLibrary]);
 
   useEffect(() => {
     const unlisten = onImportComplete(async () => {
@@ -84,78 +57,6 @@ export function LapLibraryPage() {
     setFocusedSessionId(library[0]?.session.id ?? null);
   }, [library, focusedSessionId]);
 
-  const commitBag = useCallback((next: LibraryBag) => {
-    setLibraryBag(next);
-    setSaveName(next.name);
-  }, []);
-
-  const currentSelection = useCallback((): { ids: number[]; track: string | null } => {
-    return {
-      ids: bag.lapIds,
-      track: bag.lapIds.length > 0 ? bag.track : null,
-    };
-  }, [bag]);
-
-  const applyIds = useCallback(
-    (ids: number[], track: string) => {
-      commitBag({
-        lapIds: ids,
-        track: ids.length === 0 ? "" : track,
-        name: bag.track === track ? bag.name : "",
-        setId: bag.track === track ? bag.setId : null,
-      });
-    },
-    [bag, commitBag],
-  );
-
-  const toggleLap = useCallback(
-    (lapId: number) => {
-      let track: string | null = null;
-      for (const row of library) {
-        if (row.laps.some((lap) => lap.id === lapId)) {
-          track = row.session.track;
-          break;
-        }
-      }
-      if (track == null) return;
-      const snap = currentSelection();
-      const has = snap.ids.includes(lapId);
-      if (!has && snap.ids.length > 0 && snap.track && snap.track !== track) {
-        showToast("That lap is from a different track.", "error");
-        return;
-      }
-      const ids = has ? snap.ids.filter((id) => id !== lapId) : [...snap.ids, lapId];
-      applyIds(ids, ids.length === 0 ? "" : snap.track || track);
-    },
-    [library, currentSelection, applyIds],
-  );
-
-  const toggleSession = useCallback(
-    (lapIds: number[]) => {
-      if (lapIds.length === 0) return;
-      let track: string | null = null;
-      for (const row of library) {
-        if (row.laps.some((lap) => lapIds.includes(lap.id))) {
-          track = row.session.track;
-          break;
-        }
-      }
-      if (track == null) return;
-      const snap = currentSelection();
-      const allIn = lapIds.every((id) => snap.ids.includes(id));
-      if (!allIn && snap.ids.length > 0 && snap.track && snap.track !== track) {
-        showToast("That lap is from a different track.", "error");
-        return;
-      }
-      const remove = new Set(lapIds);
-      const ids = allIn
-        ? snap.ids.filter((id) => !remove.has(id))
-        : [...new Set([...snap.ids, ...lapIds])];
-      applyIds(ids, ids.length === 0 ? "" : snap.track || track);
-    },
-    [library, currentSelection, applyIds],
-  );
-
   const openSession = useCallback((id: number) => {
     openSessionInAnalyze(id);
     navigateToFeature("analyze");
@@ -175,22 +76,12 @@ export function LapLibraryPage() {
       if (!ok) return;
       try {
         await deleteSession(sessionId);
-        const list = await refreshLibrary();
-        const live = new Set(list.flatMap((row) => row.laps.map((lap) => lap.id)));
-        const lapIds = bag.lapIds.filter((id) => live.has(id));
-        if (lapIds.length !== bag.lapIds.length) {
-          commitBag({
-            ...bag,
-            lapIds,
-            track: lapIds.length === 0 ? "" : bag.track,
-            setId: lapIds.length === 0 ? null : bag.setId,
-          });
-        }
+        await refreshLibrary();
       } catch (e) {
         showToast(`Delete failed: ${String(e)}`, "error");
       }
     },
-    [refreshLibrary, bag, commitBag],
+    [refreshLibrary],
   );
 
   const handleDeleteAll = useCallback(async () => {
@@ -205,12 +96,11 @@ export function LapLibraryPage() {
         await deleteSession(s.id);
       }
       await refreshLibrary();
-      commitBag({ lapIds: [], track: "", name: "", setId: null });
     } catch (e) {
       showToast(`Delete failed: ${String(e)}`, "error");
       await refreshLibrary();
     }
-  }, [sessions, refreshLibrary, commitBag]);
+  }, [sessions, refreshLibrary]);
 
   const handleReimportAll = useCallback(async () => {
     if (sessions.length === 0) return;
@@ -236,7 +126,6 @@ export function LapLibraryPage() {
       bulkReimport.current = false;
       setReimporting(false);
       await refreshLibrary();
-      commitBag({ lapIds: [], track: "", name: "", setId: null });
     }
     showToast(
       failed.length === 0
@@ -244,123 +133,8 @@ export function LapLibraryPage() {
         : `Re-imported ${done}; ${failed.length} skipped (IBT missing or unreadable).`,
       failed.length === 0 ? "success" : "info",
     );
-  }, [sessions, refreshLibrary, commitBag]);
+  }, [sessions, refreshLibrary]);
 
-  const handleSaveSet = useCallback(async () => {
-    const name = saveName.trim();
-    if (!name) {
-      showToast("Set name is required.", "error");
-      return;
-    }
-    if (bag.lapIds.length === 0 || !bag.track) {
-      showToast("Check at least one lap.", "error");
-      return;
-    }
-    try {
-      const id = await saveLapSet(bag.setId, name, bag.track, bag.lapIds);
-      await refreshSets();
-      commitBag({ ...bag, setId: id, name });
-      showToast(bag.setId != null ? "Set updated." : "Set saved.", "success");
-    } catch (e) {
-      showToast(String(e), "error");
-    }
-  }, [saveName, bag, refreshSets, commitBag]);
-
-  const openBagInAnalyze = useCallback(
-    (next: LibraryBag) => {
-      if (next.lapIds.length === 0 || !next.track) {
-        showToast("Check at least one lap.", "error");
-        return;
-      }
-      const whole = library.find((row) => {
-        const lapIds = row.laps.map((lap) => lap.id);
-        return lapIds.length === next.lapIds.length && lapIds.every((id) => next.lapIds.includes(id));
-      });
-      if (whole && next.setId == null) {
-        openSessionInAnalyze(whole.session.id);
-      } else {
-        openSelectionInAnalyze(next.lapIds, next.track, { name: next.name, setId: next.setId });
-      }
-      navigateToFeature("analyze");
-    },
-    [library],
-  );
-
-  const handleOpenSet = useCallback(
-    async (setId: number) => {
-      try {
-        const detail = await getLapSet(setId);
-        if (!detail) {
-          showToast("Set not found.", "error");
-          await refreshSets();
-          return;
-        }
-        const next: LibraryBag = {
-          lapIds: detail.laps.map((row) => row.lap.id),
-          track: detail.set.track,
-          name: detail.set.name,
-          setId: detail.set.id,
-        };
-        commitBag(next);
-        openBagInAnalyze(next);
-      } catch (e) {
-        showToast(String(e), "error");
-      }
-    },
-    [commitBag, refreshSets, openBagInAnalyze],
-  );
-
-  const handleRenameSet = useCallback(
-    async (setId: number, name: string) => {
-      const target = sets.find((s) => s.id === setId);
-      if (!target) return;
-      try {
-        const detail = await getLapSet(setId);
-        if (!detail) {
-          showToast("Set not found.", "error");
-          await refreshSets();
-          return;
-        }
-        await saveLapSet(
-          setId,
-          name,
-          detail.set.track,
-          detail.laps.map((row) => row.lap.id),
-        );
-        await refreshSets();
-        if (bag.setId === setId) {
-          commitBag({ ...bag, name });
-        }
-        showToast("Set renamed.", "success");
-      } catch (e) {
-        showToast(String(e), "error");
-      }
-    },
-    [sets, refreshSets, bag, commitBag],
-  );
-
-  const handleDeleteSet = useCallback(
-    async (setId: number) => {
-      const ok = await confirmDialog("Delete this set? The laps stay imported.", "Delete set");
-      if (!ok) return;
-      try {
-        await deleteLapSet(setId);
-        await refreshSets();
-        if (bag.setId === setId) {
-          commitBag({ ...bag, setId: null });
-        }
-      } catch (e) {
-        showToast(String(e), "error");
-      }
-    },
-    [refreshSets, bag, commitBag],
-  );
-
-  const handleOpenInAnalyze = useCallback(() => {
-    openBagInAnalyze(bag);
-  }, [bag, openBagInAnalyze]);
-
-  const selectedIds = useMemo(() => new Set(bag.lapIds), [bag.lapIds]);
   const focusedSession = useMemo(
     () => library.find((row) => row.session.id === focusedSessionId) ?? null,
     [library, focusedSessionId],
@@ -392,69 +166,24 @@ export function LapLibraryPage() {
           </div>
         </div>
       ) : (
-        <>
-          <div className="library-master-detail">
-            <SessionListPanel
-              library={library}
-              focusedSessionId={focusedSessionId}
-              selectedIds={selectedIds}
-              onFocusSession={setFocusedSessionId}
-              onDeleteSession={handleDelete}
-              onDeleteAll={handleDeleteAll}
-              onReimportAll={handleReimportAll}
-              reimporting={reimporting}
+        <div className="library-master-detail">
+          <LibraryTreePanel
+            library={library}
+            focusedSessionId={focusedSessionId}
+            onFocusSession={setFocusedSessionId}
+            onDeleteSession={handleDelete}
+            onDeleteAll={handleDeleteAll}
+            onReimportAll={handleReimportAll}
+            reimporting={reimporting}
+          />
+          <div className="library-detail-column">
+            <SessionLapList
+              session={focusedSession}
+              onOpenSession={openSession}
+              onOpenLap={activateLap}
             />
-            <div className="library-detail-column">
-              <SessionLapChecklist
-                session={focusedSession}
-                selectedIds={selectedIds}
-                onToggleLap={toggleLap}
-                onToggleAll={toggleSession}
-                onOpenSession={openSession}
-                onOpenLap={activateLap}
-              />
-              <section className="library-selection panel">
-                <div className="panel-header">
-                  <h2>Selection</h2>
-                </div>
-                <div className="library-selection-body">
-                  <p className="muted">
-                    {bag.lapIds.length === 0
-                      ? "Check laps from one track to build a compare bag."
-                      : `${bag.track} · ${bag.lapIds.length} lap${bag.lapIds.length === 1 ? "" : "s"}`}
-                  </p>
-                  <div className="library-selection-row">
-                    <input
-                      className="selection-title-input"
-                      value={saveName}
-                      onChange={(e) => setSaveName(e.target.value)}
-                      placeholder="Set name"
-                      aria-label="Set name"
-                    />
-                    <button type="button" className="btn" onClick={() => void handleSaveSet()}>
-                      {bag.setId != null ? "Update set" : "Save as set"}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      onClick={handleOpenInAnalyze}
-                      disabled={bag.lapIds.length === 0}
-                    >
-                      Open in Analyze
-                    </button>
-                  </div>
-                </div>
-              </section>
-              <SetsPanel
-                sets={sets}
-                activeSetId={bag.setId}
-                onOpen={(id) => void handleOpenSet(id)}
-                onRename={(id, name) => void handleRenameSet(id, name)}
-                onDelete={(id) => void handleDeleteSet(id)}
-              />
-            </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

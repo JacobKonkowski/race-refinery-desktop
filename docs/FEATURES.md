@@ -6,17 +6,17 @@ Race Refinery exposes features via `src/features/registry.ts`: **Lap Library**, 
 
 | Capability | Notes |
 |------------|--------|
-| Lap explorer | Track → car → session → lap tree. Search and hide-no-pace-eligible. Checkbox = selection membership on one track; session or lap row click opens that outing in Analyze (open flow B) |
-| Selection | Working bag of checked laps. **Save as set** / **Update set**, then **Open in Analyze** for multi-lap bags |
-| Sets | Named bags on one track: Open (load into selection), Rename, Delete (members stay imported). Filters stay deferred |
+| Browse tree | Car → Track → Session on the left; focused session’s lap list on the right. Search and hide-no-pace-eligible. No Sets chrome, draft bag, or membership checkboxes on this tab |
+| Open flow B | Session **Open in Analyze** or lap row click opens that outing in Analyze |
+| Sets | Deferred to a separate tab later (tables/API remain) |
 | Import | File / folder pickers; folder watcher auto-import |
 
 ## Analyze
 
 | Capability | Notes |
 |------------|--------|
-| Workspace only | No library sidebar. Empty until Lap Library opens a session/lap or selection/set. Header / empty CTA: **Change in Lap Library** / **Open Lap Library** |
-| Workspace | Session workspace (one outing: compare + map + insights + fuel) or selection workspace (opened bag: compare + map + lap table with date/car/type). Lap picker below (optional Pace-only) |
+| Workspace only | No library sidebar. Empty until Lap Library opens a session/lap. Header / empty CTA: **Change in Lap Library** / **Open Lap Library** |
+| Workspace | Session workspace (one outing: compare + map + insights + fuel). Lap picker below (optional Pace-only) |
 | Lap table | Shows all loaded laps by default; session type grouping; sectors; `paceEligible`; optional tire columns; traffic tags |
 | Compare | Distance-aligned traces with **trace toggles** (Δ, speed, pedals, gear, RPM, clutch, steering, lat/long G, yaw). Corner table shows each lap’s absolute time through the corner plus Δ vs reference (+ = slower); expand a row for technique. Brake chart shades ABS from the sim channel. |
 | Re-import | Session header re-analyzes the outing’s IBT still on disk (`reimport_session_cmd`) |

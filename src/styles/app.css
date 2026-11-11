@@ -153,7 +153,6 @@
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
   min-height: 0;
 }
 .library-detail {
@@ -163,7 +162,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 180px;
+  flex: 1;
+  min-height: 0;
 }
 .library-detail-header {
   display: flex;
@@ -188,18 +188,6 @@
   align-items: center;
   gap: 10px;
 }
-.library-select-all {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-.library-select-all input {
-  width: auto;
-  margin: 0;
-}
 .library-detail-empty {
   margin: 0;
   padding: 20px 14px;
@@ -209,26 +197,19 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: min(42vh, 420px);
   overflow: auto;
+  flex: 1;
+  min-height: 0;
 }
 .library-lap-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
+  padding: 0;
   border-top: 1px solid var(--color-border);
 }
 .library-lap-row:first-child {
   border-top: 0;
-}
-.library-lap-row.checked {
-  background: var(--color-surface-alt);
-}
-.library-lap-check {
-  width: auto;
-  margin: 0;
-  flex: 0 0 auto;
 }
 .library-lap-label {
   display: flex;
@@ -242,7 +223,10 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-  padding: 0;
+  padding: 8px 14px;
+}
+.library-lap-label:hover {
+  background: var(--color-surface-hover);
 }
 .library-lap-num {
   width: 36px;
@@ -266,90 +250,6 @@
 .library-workspace-empty {
   flex: 1;
   justify-content: center;
-}
-.library-selection-body {
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.library-selection-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-.selection-title-input {
-  flex: 1 1 180px;
-  min-width: 140px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  color: var(--color-text);
-  padding: 7px 10px;
-  font-size: 13px;
-}
-.library-sets {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  overflow: hidden;
-}
-.library-sets .panel-header {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--color-border);
-}
-.library-sets-empty {
-  margin: 0;
-  padding: 12px 14px;
-  font-size: 13px;
-}
-.library-sets-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.library-set-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 14px;
-  border-top: 1px solid var(--color-border);
-}
-.library-set-row:first-child {
-  border-top: 0;
-}
-.library-set-row.active {
-  background: var(--color-surface-alt);
-  box-shadow: inset 3px 0 0 var(--color-accent);
-}
-.library-set-main {
-  flex: 1 1 220px;
-  min-width: 0;
-}
-.library-set-name {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  padding: 0;
-}
-.library-set-name span:first-child {
-  font-weight: 600;
-}
-.library-set-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
 }
 .change-library-link {
   margin-left: auto;

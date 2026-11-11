@@ -1,6 +1,6 @@
 # Race Refinery documentation hub
 
-Race Refinery helps you get faster in iRacing: **Lap Library** to bag sessions/sets, **Analyze** compare after a session, **Live** coach + HUD while you drive, and **Voice Studio** to record the coach's voice packs.
+Race Refinery helps you get faster in iRacing: **Lap Library** to browse and open sessions, **Analyze** compare after a session, **Live** coach + HUD while you drive, and **Voice Studio** to record the coach's voice packs.
 
 ## Guides
 
