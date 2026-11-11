@@ -11,12 +11,10 @@ import {
   saveLapSet,
 } from "../../shared/api";
 import {
-  getAnalyzeOpen,
   getLibraryBag,
   openSelectionInAnalyze,
   openSessionInAnalyze,
   setLibraryBag,
-  subscribeAnalyzeOpen,
   subscribeLibraryBag,
   type LibraryBag,
 } from "../../shared/analyzeOpen";
@@ -24,15 +22,16 @@ import { navigateToFeature } from "../../shared/navigation";
 import { showToast } from "../../shared/toast";
 import type { LapSetSummary, LibrarySession } from "../../shared/types";
 import { useImportActions } from "../analyze/useImportActions";
-import { ExplorerSidebar } from "./ExplorerSidebar";
+import { SessionLapChecklist } from "./SessionLapChecklist";
+import { SessionListPanel } from "./SessionListPanel";
 import { SetsPanel } from "./SetsPanel";
 
 export function LapLibraryPage() {
   const [library, setLibrary] = useState<LibrarySession[]>([]);
   const [sets, setSets] = useState<LapSetSummary[]>([]);
   const [bag, setBag] = useState<LibraryBag>(() => getLibraryBag());
-  const [analyzeOpen, setAnalyzeOpenState] = useState(() => getAnalyzeOpen());
   const [saveName, setSaveName] = useState(() => getLibraryBag().name);
+  const [focusedSessionId, setFocusedSessionId] = useState<number | null>(null);
   const [reimporting, setReimporting] = useState(false);
   const bulkReimport = useRef(false);
   const importActions = useImportActions();
@@ -52,7 +51,6 @@ export function LapLibraryPage() {
   }, []);
 
   useEffect(() => subscribeLibraryBag(() => setBag(getLibraryBag())), []);
-  useEffect(() => subscribeAnalyzeOpen(() => setAnalyzeOpenState(getAnalyzeOpen())), []);
 
   useEffect(() => {
     refreshLibrary().catch((e) => {
@@ -74,6 +72,17 @@ export function LapLibraryPage() {
       unlisten.then((fn) => fn()).catch(() => undefined);
     };
   }, [refreshLibrary]);
+
+  useEffect(() => {
+    if (library.length === 0) {
+      setFocusedSessionId(null);
+      return;
+    }
+    if (focusedSessionId != null && library.some((row) => row.session.id === focusedSessionId)) {
+      return;
+    }
+    setFocusedSessionId(library[0]?.session.id ?? null);
+  }, [library, focusedSessionId]);
 
   const commitBag = useCallback((next: LibraryBag) => {
     setLibraryBag(next);
@@ -257,6 +266,26 @@ export function LapLibraryPage() {
     }
   }, [saveName, bag, refreshSets, commitBag]);
 
+  const openBagInAnalyze = useCallback(
+    (next: LibraryBag) => {
+      if (next.lapIds.length === 0 || !next.track) {
+        showToast("Check at least one lap.", "error");
+        return;
+      }
+      const whole = library.find((row) => {
+        const lapIds = row.laps.map((lap) => lap.id);
+        return lapIds.length === next.lapIds.length && lapIds.every((id) => next.lapIds.includes(id));
+      });
+      if (whole && next.setId == null) {
+        openSessionInAnalyze(whole.session.id);
+      } else {
+        openSelectionInAnalyze(next.lapIds, next.track, { name: next.name, setId: next.setId });
+      }
+      navigateToFeature("analyze");
+    },
+    [library],
+  );
+
   const handleOpenSet = useCallback(
     async (setId: number) => {
       try {
@@ -266,17 +295,19 @@ export function LapLibraryPage() {
           await refreshSets();
           return;
         }
-        commitBag({
+        const next: LibraryBag = {
           lapIds: detail.laps.map((row) => row.lap.id),
           track: detail.set.track,
           name: detail.set.name,
           setId: detail.set.id,
-        });
+        };
+        commitBag(next);
+        openBagInAnalyze(next);
       } catch (e) {
         showToast(String(e), "error");
       }
     },
-    [commitBag, refreshSets],
+    [commitBag, refreshSets, openBagInAnalyze],
   );
 
   const handleRenameSet = useCallback(
@@ -326,46 +357,19 @@ export function LapLibraryPage() {
   );
 
   const handleOpenInAnalyze = useCallback(() => {
-    if (bag.lapIds.length === 0 || !bag.track) {
-      showToast("Check at least one lap.", "error");
-      return;
-    }
-    const whole = library.find((row) => {
-      const lapIds = row.laps.map((lap) => lap.id);
-      return lapIds.length === bag.lapIds.length && lapIds.every((id) => bag.lapIds.includes(id));
-    });
-    if (whole && bag.setId == null) {
-      openSessionInAnalyze(whole.session.id);
-    } else {
-      openSelectionInAnalyze(bag.lapIds, bag.track, { name: bag.name, setId: bag.setId });
-    }
-    navigateToFeature("analyze");
-  }, [bag, library]);
+    openBagInAnalyze(bag);
+  }, [bag, openBagInAnalyze]);
 
   const selectedIds = useMemo(() => new Set(bag.lapIds), [bag.lapIds]);
-  const selectedSessionId =
-    analyzeOpen.kind === "session" ? analyzeOpen.sessionId : null;
-  const selectedLapId =
-    analyzeOpen.kind === "session" ? analyzeOpen.candidateLapId : null;
+  const focusedSession = useMemo(
+    () => library.find((row) => row.session.id === focusedSessionId) ?? null,
+    [library, focusedSessionId],
+  );
 
   return (
     <div className="lap-library">
-      <ExplorerSidebar
-        library={library}
-        selectedSessionId={selectedSessionId}
-        selectedLapId={selectedLapId}
-        selectedIds={selectedIds}
-        onOpenSession={openSession}
-        onActivateLap={activateLap}
-        onToggleLap={toggleLap}
-        onToggleSession={toggleSession}
-        onDeleteSession={handleDelete}
-        onDeleteAll={handleDeleteAll}
-        onReimportAll={handleReimportAll}
-        reimporting={reimporting}
-      />
-      <div className="library-workspace">
-        {library.length === 0 ? (
+      {library.length === 0 ? (
+        <div className="library-workspace library-workspace-empty">
           <div className="empty-state">
             <h2>No sessions yet</h2>
             <p className="muted">
@@ -386,50 +390,72 @@ export function LapLibraryPage() {
               </button>
             </div>
           </div>
-        ) : (
-          <>
-            <section className="library-selection panel">
-              <div className="panel-header">
-                <h2>Selection</h2>
-              </div>
-              <div className="library-selection-body">
-                <p className="muted">
-                  {bag.lapIds.length === 0
-                    ? "Check laps from one track to build a compare bag. Click a session or lap to open it in Analyze."
-                    : `${bag.track} · ${bag.lapIds.length} lap${bag.lapIds.length === 1 ? "" : "s"}`}
-                </p>
-                <div className="library-selection-row">
-                  <input
-                    className="selection-title-input"
-                    value={saveName}
-                    onChange={(e) => setSaveName(e.target.value)}
-                    placeholder="Set name"
-                    aria-label="Set name"
-                  />
-                  <button type="button" className="btn" onClick={() => void handleSaveSet()}>
-                    {bag.setId != null ? "Update set" : "Save as set"}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={handleOpenInAnalyze}
-                    disabled={bag.lapIds.length === 0}
-                  >
-                    Open in Analyze
-                  </button>
-                </div>
-              </div>
-            </section>
-            <SetsPanel
-              sets={sets}
-              activeSetId={bag.setId}
-              onOpen={(id) => void handleOpenSet(id)}
-              onRename={(id, name) => void handleRenameSet(id, name)}
-              onDelete={(id) => void handleDeleteSet(id)}
+        </div>
+      ) : (
+        <>
+          <div className="library-master-detail">
+            <SessionListPanel
+              library={library}
+              focusedSessionId={focusedSessionId}
+              selectedIds={selectedIds}
+              onFocusSession={setFocusedSessionId}
+              onDeleteSession={handleDelete}
+              onDeleteAll={handleDeleteAll}
+              onReimportAll={handleReimportAll}
+              reimporting={reimporting}
             />
-          </>
-        )}
-      </div>
+            <div className="library-detail-column">
+              <SessionLapChecklist
+                session={focusedSession}
+                selectedIds={selectedIds}
+                onToggleLap={toggleLap}
+                onToggleAll={toggleSession}
+                onOpenSession={openSession}
+                onOpenLap={activateLap}
+              />
+              <section className="library-selection panel">
+                <div className="panel-header">
+                  <h2>Selection</h2>
+                </div>
+                <div className="library-selection-body">
+                  <p className="muted">
+                    {bag.lapIds.length === 0
+                      ? "Check laps from one track to build a compare bag."
+                      : `${bag.track} · ${bag.lapIds.length} lap${bag.lapIds.length === 1 ? "" : "s"}`}
+                  </p>
+                  <div className="library-selection-row">
+                    <input
+                      className="selection-title-input"
+                      value={saveName}
+                      onChange={(e) => setSaveName(e.target.value)}
+                      placeholder="Set name"
+                      aria-label="Set name"
+                    />
+                    <button type="button" className="btn" onClick={() => void handleSaveSet()}>
+                      {bag.setId != null ? "Update set" : "Save as set"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handleOpenInAnalyze}
+                      disabled={bag.lapIds.length === 0}
+                    >
+                      Open in Analyze
+                    </button>
+                  </div>
+                </div>
+              </section>
+              <SetsPanel
+                sets={sets}
+                activeSetId={bag.setId}
+                onOpen={(id) => void handleOpenSet(id)}
+                onRename={(id, name) => void handleRenameSet(id, name)}
+                onDelete={(id) => void handleDeleteSet(id)}
+              />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

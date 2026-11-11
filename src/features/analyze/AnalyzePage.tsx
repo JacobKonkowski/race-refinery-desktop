@@ -7,7 +7,7 @@ import {
 } from "../../shared/api";
 import {
   getAnalyzeOpen,
-  setAnalyzeOpen,
+  openSessionInAnalyze,
   subscribeAnalyzeOpen,
   type AnalyzeOpen,
 } from "../../shared/analyzeOpen";
@@ -139,11 +139,12 @@ export function AnalyzePage() {
     );
   }, [open, detail]);
 
-  const selectionKey = open.kind === "selection" ? open.lapIds.join(",") : "";
+  const selectionKey =
+    open.kind === "selection" ? `${open.openSeq}:${open.lapIds.join(",")}` : "";
 
   useEffect(() => {
     if (open.kind !== "selection") return;
-    if (selectionKey === "") {
+    if (open.lapIds.length === 0) {
       loadedKey.current = "";
       setSettledKey("");
       setSelectionRows([]);
@@ -151,7 +152,7 @@ export function AnalyzePage() {
       return;
     }
     if (loadedKey.current === selectionKey) return;
-    const ids = selectionKey.split(",").map(Number);
+    const ids = open.lapIds;
     let cancelled = false;
     setSelectionError(null);
     loadLaps(ids)
@@ -190,7 +191,7 @@ export function AnalyzePage() {
       setReimporting(true);
       try {
         const newId = await reimportSession(sessionId);
-        setAnalyzeOpen({ kind: "session", sessionId: newId, candidateLapId: null });
+        openSessionInAnalyze(newId);
         showToast("Session re-imported with the latest analysis.", "success");
       } catch (e) {
         showToast(String(e), "error");
@@ -210,7 +211,9 @@ export function AnalyzePage() {
   const selection = open.kind === "selection" ? open : null;
   const selectionLaps = selectionRows.map((row) => row.lap);
   const selectionReady =
-    selection != null && settledKey === selection.lapIds.join(",") && selectionError == null;
+    selection != null &&
+    settledKey === `${selection.openSeq}:${selection.lapIds.join(",")}` &&
+    selectionError == null;
   const visibleLaps = selection && selectionReady ? selectionLaps : laps;
   const mapTrack = selection && selection.lapIds.length > 0 ? selection.track : detail?.session.track;
   const trackMap = useTrackMap(mapTrack);

@@ -5,13 +5,14 @@
 
 export type AnalyzeOpen =
   | { kind: "empty" }
-  | { kind: "session"; sessionId: number; candidateLapId: number | null }
+  | { kind: "session"; sessionId: number; candidateLapId: number | null; openSeq: number }
   | {
       kind: "selection";
       lapIds: number[];
       track: string;
       name: string;
       setId: number | null;
+      openSeq: number;
     };
 
 export type LibraryBag = {
@@ -23,12 +24,18 @@ export type LibraryBag = {
 
 let analyzeOpen: AnalyzeOpen = { kind: "empty" };
 let libraryBag: LibraryBag = { lapIds: [], track: "", name: "", setId: null };
+let openSeq = 0;
 
 const analyzeListeners = new Set<() => void>();
 const bagListeners = new Set<() => void>();
 
 function emit(listeners: Set<() => void>) {
   for (const listener of listeners) listener();
+}
+
+function nextOpenSeq(): number {
+  openSeq += 1;
+  return openSeq;
 }
 
 export function getAnalyzeOpen(): AnalyzeOpen {
@@ -64,7 +71,7 @@ export function subscribeLibraryBag(listener: () => void): () => void {
 }
 
 export function openSessionInAnalyze(sessionId: number, candidateLapId: number | null = null) {
-  setAnalyzeOpen({ kind: "session", sessionId, candidateLapId });
+  setAnalyzeOpen({ kind: "session", sessionId, candidateLapId, openSeq: nextOpenSeq() });
 }
 
 export function openSelectionInAnalyze(
@@ -78,5 +85,6 @@ export function openSelectionInAnalyze(
     track,
     name: opts?.name ?? "",
     setId: opts?.setId ?? null,
+    openSeq: nextOpenSeq(),
   });
 }

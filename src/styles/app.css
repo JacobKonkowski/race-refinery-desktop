@@ -137,10 +137,123 @@
 
 /* --- Lap Library + Analyze workspace layout --- */
 .lap-library {
-  display: grid;
-  grid-template-columns: 320px 1fr;
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 0;
+}
+.library-master-detail {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+}
+.library-detail-column {
+  overflow: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+.library-detail {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 180px;
+}
+.library-detail-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+.library-detail-title h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.library-detail-title p {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+.library-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.library-select-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.library-select-all input {
+  width: auto;
+  margin: 0;
+}
+.library-detail-empty {
+  margin: 0;
+  padding: 20px 14px;
+  font-size: 13px;
+}
+.library-lap-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: min(42vh, 420px);
+  overflow: auto;
+}
+.library-lap-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-top: 1px solid var(--color-border);
+}
+.library-lap-row:first-child {
+  border-top: 0;
+}
+.library-lap-row.checked {
+  background: var(--color-surface-alt);
+}
+.library-lap-check {
+  width: auto;
+  margin: 0;
+  flex: 0 0 auto;
+}
+.library-lap-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+.library-lap-num {
+  width: 36px;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 600;
+}
+.library-lap-time {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 .library-workspace {
   overflow: auto;
@@ -149,6 +262,10 @@
   flex-direction: column;
   gap: 16px;
   min-height: 0;
+}
+.library-workspace-empty {
+  flex: 1;
+  justify-content: center;
 }
 .library-selection-body {
   padding: 12px 14px;
@@ -249,25 +366,29 @@
   grid-template-columns: 1fr;
 }
 
-.session-sidebar {
+.session-sidebar,
+.library-master {
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--color-border);
   background: var(--color-surface);
   min-height: 0;
 }
-.session-sidebar .sidebar-search {
+.session-sidebar .sidebar-search,
+.library-master .sidebar-search {
   padding: 10px;
   border-bottom: 1px solid var(--color-border);
 }
-.session-sidebar .sidebar-search-controls {
+.session-sidebar .sidebar-search-controls,
+.library-master .sidebar-search-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   margin-top: 8px;
 }
-.session-sidebar .sidebar-search-controls select {
+.session-sidebar .sidebar-search-controls select,
+.library-master .sidebar-search-controls select {
   background: var(--color-bg);
   border: 1px solid var(--color-border-strong);
   color: var(--color-text);
@@ -275,7 +396,8 @@
   padding: 5px 6px;
   font-size: 12px;
 }
-.session-sidebar .sidebar-hide-empty {
+.session-sidebar .sidebar-hide-empty,
+.library-master .sidebar-hide-empty {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -284,11 +406,13 @@
   white-space: nowrap;
   cursor: pointer;
 }
-.session-sidebar .sidebar-hide-empty input[type="checkbox"] {
+.session-sidebar .sidebar-hide-empty input[type="checkbox"],
+.library-master .sidebar-hide-empty input[type="checkbox"] {
   width: auto;
   cursor: pointer;
 }
-.session-sidebar input {
+.session-sidebar input,
+.library-master input[type="search"] {
   width: 100%;
   background: var(--color-bg);
   border: 1px solid var(--color-border-strong);

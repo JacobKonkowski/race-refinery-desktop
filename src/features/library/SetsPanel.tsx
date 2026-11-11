@@ -60,7 +60,7 @@ export function SetsPanel({ sets, activeSetId, onOpen, onRename, onDelete }: Pro
                       type="button"
                       className="library-set-name"
                       onClick={() => onOpen(set.id)}
-                      title="Load into selection"
+                      title="Open in Analyze"
                     >
                       <span>{set.name}</span>
                       <span className="muted">

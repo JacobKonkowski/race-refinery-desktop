@@ -16,7 +16,7 @@ afterEach(() => {
 describe("analyzeOpen handoff", () => {
   it("opens a session for Analyze", () => {
     openSessionInAnalyze(12, 34);
-    expect(getAnalyzeOpen()).toEqual({
+    expect(getAnalyzeOpen()).toMatchObject({
       kind: "session",
       sessionId: 12,
       candidateLapId: 34,
@@ -25,7 +25,7 @@ describe("analyzeOpen handoff", () => {
 
   it("opens a selection bag for Analyze", () => {
     openSelectionInAnalyze([1, 2, 3], "Spa", { name: "Race pace", setId: 9 });
-    expect(getAnalyzeOpen()).toEqual({
+    expect(getAnalyzeOpen()).toMatchObject({
       kind: "selection",
       lapIds: [1, 2, 3],
       track: "Spa",
@@ -39,5 +39,17 @@ describe("analyzeOpen handoff", () => {
     openSessionInAnalyze(99);
     expect(getLibraryBag().lapIds).toEqual([7]);
     expect(getAnalyzeOpen().kind).toBe("session");
+  });
+
+  it("bumps openSeq when reopening the same selection", () => {
+    openSelectionInAnalyze([1, 2], "Spa", { name: "A", setId: 1 });
+    const first = getAnalyzeOpen();
+    expect(first.kind).toBe("selection");
+    if (first.kind !== "selection") return;
+    openSelectionInAnalyze([1, 2], "Spa", { name: "A", setId: 1 });
+    const second = getAnalyzeOpen();
+    expect(second.kind).toBe("selection");
+    if (second.kind !== "selection") return;
+    expect(second.openSeq).toBeGreaterThan(first.openSeq);
   });
 });
