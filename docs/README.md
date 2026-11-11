@@ -1,6 +1,6 @@
 # Race Refinery documentation hub
 
-Race Refinery helps you get faster in iRacing: **Analyze** your IBT telemetry after a session, **Live** coach + HUD while you drive, and **Voice Studio** to record the coach's voice packs.
+Race Refinery helps you get faster in iRacing: **Lap Library** to bag sessions/sets, **Analyze** compare after a session, **Live** coach + HUD while you drive, and **Voice Studio** to record the coach's voice packs.
 
 ## Guides
 
@@ -8,7 +8,7 @@ Race Refinery helps you get faster in iRacing: **Analyze** your IBT telemetry af
 |-----|----------|
 | [FOUNDATION.md](FOUNDATION.md) | **Start here** — crates, deps, AI/PR playbook |
 | [SETUP.md](SETUP.md) | Prerequisites, first run, race-night checklist |
-| [FEATURES.md](FEATURES.md) | What Analyze, Live, Voice Studio, and Settings do |
+| [FEATURES.md](FEATURES.md) | What Lap Library, Analyze, Live, Voice Studio, and Settings do |
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Import, live, audio coach / Voice Studio, VR |
 | [API.md](API.md) | Tauri commands + frontend IPC (`src/shared`) |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Modules, feature registry, data flow |
@@ -46,6 +46,7 @@ Race Refinery helps you get faster in iRacing: **Analyze** your IBT telemetry af
 - Types → `src/shared/types.ts`, [DATA_MODEL.md](DATA_MODEL.md)
 - Live UI → `src/features/live/LivePage.tsx`
 - Voice Studio UI → `src/features/voice-studio/*`
+- Lap Library UI → `src/features/library/*`
 - Analyze UI → `src/features/analyze/*`
 - Analysis cleanup → `crates/race-refinery-analysis`, [ANALYSIS.md](ANALYSIS.md)
 - Feature list → `src/features/registry.ts`

@@ -40,12 +40,17 @@ Record telemetry in-car with **Alt+L**. Files land in `Documents\iRacing\telemet
 
 ## Features
 
-The UI is a feature shell with **Analyze**, **Live**, **Voice Studio**, and **Settings** (`src/features/registry.ts`).
+The UI is a feature shell with **Lap Library**, **Analyze**, **Live**, **Voice Studio**, and **Settings** (`src/features/registry.ts`).
+
+### Lap Library
+
+- Import IBTs (watcher + manual), browse track → car → session → lap
+- Build a selection, save/open/rename/delete **Sets**, open into Analyze
 
 ### Analyze (post-session)
 
-- Auto-import from the telemetry folder (file watcher) plus manual import
-- Session browser, lap table with P/Q/R grouping, sectors, and `paceEligible` laps (official time, sim `_OK` flags, and near-full distance coverage)
+- Workspace for the session or selection opened from Lap Library (no library sidebar)
+- Lap table with P/Q/R grouping, sectors, and `paceEligible` laps (official time, sim `_OK` flags, and near-full distance coverage)
 - Two-lap trace compare via `compare_laps`
 - Fuel / tire panels from stored lap facts
 - **Insights** strip — deterministic client-side bullets (consistency, weak sector, fuel outliers)

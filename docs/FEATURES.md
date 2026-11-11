@@ -1,22 +1,28 @@
 # Features
 
-Race Refinery exposes features via `src/features/registry.ts`: **Analyze**, **Live**, **Voice Studio**, and **Settings**.
+Race Refinery exposes features via `src/features/registry.ts`: **Lap Library**, **Analyze**, **Live**, **Voice Studio**, and **Settings**.
+
+## Lap Library
+
+| Capability | Notes |
+|------------|--------|
+| Lap explorer | Track → car → session → lap tree. Search and hide-no-pace-eligible. Checkbox = selection membership on one track; session or lap row click opens that outing in Analyze (open flow B) |
+| Selection | Working bag of checked laps. **Save as set** / **Update set**, then **Open in Analyze** for multi-lap bags |
+| Sets | Named bags on one track: Open (load into selection), Rename, Delete (members stay imported). Filters stay deferred |
+| Import | File / folder pickers; folder watcher auto-import |
 
 ## Analyze
 
 | Capability | Notes |
 |------------|--------|
-| Lap explorer | Library-first sidebar: track → car → session → lap. Search and hide-no-pace-eligible. Checkbox = compare membership on one track; session row click opens that outing; lap row click adds to the selection (if needed) and sets the compare candidate. Sets list, Filters list, and tree filter authoring are deferred (schema/API remain) |
-| Import | File / folder pickers; folder watcher auto-import |
-| Config tip | Reminds when disk recording looks disabled |
-| Workspace | Session workspace (one outing: compare + map + insights + fuel) or selection workspace (checked laps on one track: compare + map + lap table with date/car/type). Lap picker below (optional Pace-only) |
+| Workspace only | No library sidebar. Empty until Lap Library opens a session/lap or selection/set. Header / empty CTA: **Change in Lap Library** / **Open Lap Library** |
+| Workspace | Session workspace (one outing: compare + map + insights + fuel) or selection workspace (opened bag: compare + map + lap table with date/car/type). Lap picker below (optional Pace-only) |
 | Lap table | Shows all loaded laps by default; session type grouping; sectors; `paceEligible`; optional tire columns; traffic tags |
 | Compare | Distance-aligned traces with **trace toggles** (Δ, speed, pedals, gear, RPM, clutch, steering, lat/long G, yaw). Corner table shows each lap’s absolute time through the corner plus Δ vs reference (+ = slower); expand a row for technique. Brake chart shades ABS from the sim channel. |
-| Re-import | Session header / sidebar buttons re-analyze IBTs still on disk with the latest pipeline (`reimport_session_cmd`) |
-| Fuel / tires | Fuel use, tire temps, and pressures (secondary section). Hidden unless the selection is one whole session |
-| Insights | Session insights strip (stdev, sector gap, fuel vs median). Hidden unless the selection is one whole session |
-| Lap sets | Schema/API for named lap lists (`lap_sets`) remain. Workspace Save and sidebar Sets browse are both hidden until reopen UI returns |
-| Filters | Backend categories (`lap_categories` / `match_laps`) remain; sidebar filter authoring and saved-filter list are not shown in this cut |
+| Re-import | Session header re-analyzes the outing’s IBT still on disk (`reimport_session_cmd`) |
+| Fuel / tires | Fuel use, tire temps, and pressures (secondary section). Hidden unless the open workspace is one whole session |
+| Insights | Session insights strip (stdev, sector gap, fuel vs median). Hidden unless the open workspace is one whole session |
+| Filters | Backend categories (`lap_categories` / `match_laps`) remain; Lap Library filter authoring is not in this cut |
 
 Phantom reset buckets and sticky duplicate lap times are cleaned in the analysis pipeline (and when loading older sessions). See [ANALYSIS.md](ANALYSIS.md).
 

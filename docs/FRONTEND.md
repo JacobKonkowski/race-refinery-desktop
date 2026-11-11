@@ -12,8 +12,9 @@
 src/
   shell/           AppShell, FeatureNav
   features/
-    registry.ts    Feature[] — Analyze, Live, Voice Studio, Settings
-    analyze/       AnalyzePage (Compare beside the map), browser, laps, compare toggles, corner table, track map (Pedals/Lines), fuel…
+    registry.ts    Feature[] — Lap Library, Analyze, Live, Voice Studio, Settings
+    library/       LapLibraryPage (explorer tree, selection, Sets)
+    analyze/       AnalyzePage (workspace only: Compare beside the map), laps, compare toggles, corner table, track map (Pedals/Lines), fuel…
     live/          LivePage, SessionLeaderboard
     voice-studio/  VoiceStudioPage, RecordTab, PreviewTab
     settings/      SettingsPage, VoicePackSection

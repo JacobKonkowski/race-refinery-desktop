@@ -135,12 +135,118 @@
   color: var(--color-slow);
 }
 
-/* --- Analyze workspace layout --- */
+/* --- Lap Library + Analyze workspace layout --- */
+.lap-library {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: 100%;
+  min-height: 0;
+}
+.library-workspace {
+  overflow: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+.library-selection-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.library-selection-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.selection-title-input {
+  flex: 1 1 180px;
+  min-width: 140px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  padding: 7px 10px;
+  font-size: 13px;
+}
+.library-sets {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+.library-sets .panel-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+.library-sets-empty {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 13px;
+}
+.library-sets-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.library-set-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--color-border);
+}
+.library-set-row:first-child {
+  border-top: 0;
+}
+.library-set-row.active {
+  background: var(--color-surface-alt);
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+.library-set-main {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.library-set-name {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+.library-set-name span:first-child {
+  font-weight: 600;
+}
+.library-set-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.change-library-link {
+  margin-left: auto;
+  align-self: flex-start;
+}
+
 .analyze {
   display: grid;
   grid-template-columns: 320px 1fr;
   height: 100%;
   min-height: 0;
+}
+.analyze.analyze-solo {
+  grid-template-columns: 1fr;
 }
 
 .session-sidebar {
