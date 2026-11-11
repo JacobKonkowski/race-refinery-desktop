@@ -184,7 +184,7 @@ const VR_HUD_HTML: &str = r#"<!DOCTYPE html>
     .ironman .gap .lbl { display: block; font-size: 11px; letter-spacing: 0.18em; color: rgba(93,255,168,0.55); }
     .ironman .gap .val { font-size: 26px; font-weight: 700; }
     .ironman .deltas { position: absolute; top: 150px; left: 50%; transform: translateX(-50%); display: flex; gap: 24px; font-size: 22px; font-weight: 700; white-space: nowrap; }
-    .ironman .pack { position: absolute; top: 188px; left: 50%; transform: translateX(-50%); font-size: 24px; font-weight: 700; letter-spacing: 0.12em; }
+    .ironman .pack { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); font-size: 20px; font-weight: 700; letter-spacing: 0.12em; }
     .ironman .sectors { position: absolute; bottom: 26px; left: 0; right: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
     .ironman .sector { height: 4px; background: rgba(93,255,168,0.15); position: relative; }
     .ironman .sector .fill { position: absolute; left: 0; top: 0; bottom: 0; background: #5dffa8; }
@@ -231,7 +231,7 @@ const VR_HUD_HTML: &str = r#"<!DOCTYPE html>
       if (a != null) return "P" + a;
       return "";
     }
-    const PACK = { clear: "CLEAR", carLeft: "\u25C0 CAR", carRight: "CAR \u25B6", threeWide: "3-WIDE", twoCarsLeft: "2 LEFT", twoCarsRight: "2 RIGHT", off: "" };
+    const PACK = { clear: "", carLeft: "\u25C0 CAR", carRight: "CAR \u25B6", threeWide: "3-WIDE", twoCarsLeft: "2 LEFT", twoCarsRight: "2 RIGHT", off: "" };
     function hasLiveData(s) { return s && (s.track || s.lap > 0 || (s.fuelLevel != null && s.fuelLevel > 0)); }
 
     function fieldPace(s) {
@@ -261,7 +261,6 @@ const VR_HUD_HTML: &str = r#"<!DOCTYPE html>
 
     function renderIronman(s) {
       const packLabel = PACK[s.packState] || "";
-      const packClass = s.packState === "clear" ? "fast" : "warn";
       const sectorList = (s.sectors && s.sectors.length)
         ? s.sectors
         : [{ sectorNum: 1 }, { sectorNum: 2 }, { sectorNum: 3 }];
@@ -282,9 +281,10 @@ const VR_HUD_HTML: &str = r#"<!DOCTYPE html>
           '<span class="' + deltaClass(s.deltaToLastMs) + '">\u0394L ' + fmtDelta(s.deltaToLastMs) + '</span>' +
           fieldPace(s) +
         '</div>' +
-        (packLabel ? '<div class="pack ' + packClass + '">' + packLabel + '</div>' : '') +
         '<div class="sectors" style="grid-template-columns:' + sectorCols + '">' + sectors + '</div>' +
-        '<div class="footer">' + (s.fuelLevel || 0).toFixed(1) + ' L \u00b7 ' + Math.round(s.speed || 0) + '</div>' +
+        (packLabel
+          ? '<div class="pack warn">' + packLabel + '</div>'
+          : '<div class="footer">' + (s.fuelLevel || 0).toFixed(1) + ' L \u00b7 ' + Math.round(s.speed || 0) + '</div>') +
       '</div>';
     }
 

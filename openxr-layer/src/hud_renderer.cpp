@@ -50,7 +50,6 @@ std::wstring FormatGap(float s) {
 
 const wchar_t* PackLabel(uint32_t state) {
     switch (state) {
-        case RR_PACK_CLEAR: return L"CLEAR";
         case RR_PACK_CAR_LEFT: return L"\u25C0 CAR";
         case RR_PACK_CAR_RIGHT: return L"CAR \u25B6";
         case RR_PACK_THREE_WIDE: return L"3-WIDE";
@@ -415,14 +414,6 @@ void HudRenderer::DrawCoach(const RrSnapshot& s, float w, float h) {
                             ? s.delta_field_optimal_ms
                             : s.delta_field_best_ms));
 
-    // Pack / spotter line (hidden when off / clear handled by empty label).
-    const wchar_t* pack = PackLabel(s.pack_state);
-    if (pack && *pack) {
-        const D2D1_COLOR_F packColor = s.pack_state == RR_PACK_CLEAR ? kGlow : kWarn;
-        DrawText(pack, m_badge.Get(), {cx - 120.0f, dy + 36.0f, cx + 120.0f, dy + 70.0f},
-                 packColor);
-    }
-
     // Sector arcs.
     ComPtr<ID2D1SolidColorBrush> base, fill;
     m_d2dContext->CreateSolidColorBrush(kGlowDim, base.GetAddressOf());
@@ -442,11 +433,17 @@ void HudRenderer::DrawCoach(const RrSnapshot& s, float w, float h) {
         }
     }
 
-    // Fuel + speed, small and centered at the bottom.
-    wchar_t footer[64];
-    swprintf(footer, 64, L"%.1f L   ·   %d", s.fuel_level, static_cast<int>(s.speed));
-    DrawText(footer, m_label.Get(), {cx - 160.0f, h - 44.0f, cx + 160.0f, h - 18.0f},
-             kGlowDim);
+    // Spotter traffic takes the footer slot while it lasts: there is no free band
+    // between the delta row and the sector arcs. Fuel + speed return once clear.
+    const wchar_t* pack = PackLabel(s.pack_state);
+    if (*pack) {
+        DrawText(pack, m_badge.Get(), {cx - 120.0f, h - 46.0f, cx + 120.0f, h - 16.0f}, kWarn);
+    } else {
+        wchar_t footer[64];
+        swprintf(footer, 64, L"%.1f L   ·   %d", s.fuel_level, static_cast<int>(s.speed));
+        DrawText(footer, m_label.Get(), {cx - 160.0f, h - 44.0f, cx + 160.0f, h - 18.0f},
+                 kGlowDim);
+    }
 }
 
 void HudRenderer::DrawStandings(const RrSnapshot& s, float w, float h) {
