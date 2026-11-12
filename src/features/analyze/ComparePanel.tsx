@@ -89,10 +89,9 @@ export function ComparePanel({
   const [visible, setVisible] = useState(defaultTraceVisibility);
 
   const mode = compareMode(candidate, reference);
-  /** Reference set, no compare lap yet — show that lap's graphs/timings alone. */
+  /** One lap to inspect (ref only, or Cand === Ref) — graphs/timings alone. */
   const soloReference = mode === "solo";
   const canCompare = mode === "compare";
-  const sameLap = mode === "same";
   const showTraces = soloReference || canCompare;
 
   useEffect(() => {
@@ -214,8 +213,6 @@ export function ComparePanel({
               ? "Pick a reference lap to compare against."
               : "Pick a reference lap to inspect, or select a lap below to compare."}
           </p>
-        ) : sameLap ? (
-          <p className="muted">Candidate and reference are the same lap. Pick another lap.</p>
         ) : loading ? (
           <p className="muted">{soloReference ? "Loading reference…" : "Comparing…"}</p>
         ) : error ? (

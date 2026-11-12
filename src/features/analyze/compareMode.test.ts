@@ -44,8 +44,8 @@ describe("compareMode", () => {
     expect(compareMode(null, lap(2))).toBe("solo");
   });
 
-  it("is same when candidate equals reference", () => {
-    expect(compareMode(lap(2), lap(2))).toBe("same");
+  it("is solo when candidate equals reference", () => {
+    expect(compareMode(lap(2), lap(2))).toBe("solo");
   });
 
   it("is compare when both differ", () => {
