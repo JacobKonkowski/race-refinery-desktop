@@ -1,8 +1,8 @@
 //! SQLite storage. Persists [`AnalyzedSession`] products and serves read models.
 //!
-//! Schema is versioned via `PRAGMA user_version`. Current schema is **v10**.
+//! Schema is versioned via `PRAGMA user_version`. Current schema is **v11**.
 //! Versions older than 2 are wiped once (pre-v2 had incompatible lap taxonomy);
-//! upgrades from v2 onward use incremental migrations (v3 GPS … v10 traffic).
+//! upgrades from v2 onward use incremental migrations (v3 GPS … v11 lap sets).
 //! Full wipe remains available via the explicit `clear_database` debug command only.
 
 use anyhow::{Context, Result};
@@ -16,7 +16,7 @@ use race_refinery_analysis::{
 
 use super::models::*;
 
-const SCHEMA_VERSION: i64 = 10;
+const SCHEMA_VERSION: i64 = 11;
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS sessions (
@@ -99,10 +99,32 @@ CREATE TABLE IF NOT EXISTS lap_traffic_events (
     kind TEXT NOT NULL DEFAULT 'nearby'
 );
 
+CREATE TABLE IF NOT EXISTS lap_sets (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    track TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS lap_set_members (
+    set_id INTEGER NOT NULL REFERENCES lap_sets(id) ON DELETE CASCADE,
+    lap_id INTEGER NOT NULL REFERENCES laps(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL,
+    PRIMARY KEY (set_id, lap_id)
+);
+
+CREATE TABLE IF NOT EXISTS lap_categories (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    rule_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_laps_session ON laps(session_id);
 CREATE INDEX IF NOT EXISTS idx_sectors_lap ON sectors(lap_id);
 CREATE INDEX IF NOT EXISTS idx_traces_lap ON lap_traces(lap_id);
 CREATE INDEX IF NOT EXISTS idx_traffic_lap ON lap_traffic_events(lap_id);
+CREATE INDEX IF NOT EXISTS idx_set_members_lap ON lap_set_members(lap_id);
 ";
 
 pub struct Database {
@@ -123,6 +145,14 @@ impl Database {
         Ok(Self { conn })
     }
 
+    #[cfg(test)]
+    fn open_in_memory() -> Result<Self> {
+        let conn = Connection::open_in_memory()?;
+        conn.execute_batch("PRAGMA foreign_keys=ON;")?;
+        Self::migrate(&conn)?;
+        Ok(Self { conn })
+    }
+
     /// Apply schema migrations.
     ///
     /// - `version < 2`: one-time drop/recreate (incompatible pre-v2 layout).
@@ -134,6 +164,10 @@ impl Database {
         if version < 2 {
             conn.execute_batch(
                 "DROP TABLE IF EXISTS session_standings;
+                 DROP TABLE IF EXISTS lap_set_members;
+                 DROP TABLE IF EXISTS lap_sets;
+                 DROP TABLE IF EXISTS lap_categories;
+                 DROP TABLE IF EXISTS lap_traffic_events;
                  DROP TABLE IF EXISTS lap_traces;
                  DROP TABLE IF EXISTS sectors;
                  DROP TABLE IF EXISTS laps;
@@ -187,7 +221,7 @@ impl Database {
                     add_column_if_missing(conn, "laps", col, "REAL")?;
                 }
             }
-            // v10 sparse traffic events (table created by SCHEMA above).
+            // v10 sparse traffic and v11 lap sets / categories (tables created by SCHEMA above).
             if version < SCHEMA_VERSION {
                 conn.execute_batch(&format!("PRAGMA user_version = {SCHEMA_VERSION};"))?;
             }
@@ -360,7 +394,10 @@ impl Database {
             .conn
             .query_row("SELECT COUNT(*) FROM sessions", [], |row| row.get(0))?;
         self.conn.execute_batch(
-            "DELETE FROM lap_traffic_events;
+            "DELETE FROM lap_set_members;
+             DELETE FROM lap_sets;
+             DELETE FROM lap_categories;
+             DELETE FROM lap_traffic_events;
              DELETE FROM lap_traces;
              DELETE FROM sectors;
              DELETE FROM laps;
@@ -377,21 +414,48 @@ impl Database {
     }
 
     pub fn list_sessions(&self) -> Result<Vec<SessionSummary>> {
+        Ok(self
+            .list_library()?
+            .into_iter()
+            .map(|row| row.session)
+            .collect())
+    }
+
+    /// Sessions with the laps the explorer shows, after the same display cleanup as the list.
+    pub fn list_library(&self) -> Result<Vec<LibrarySession>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, ibt_path, track, car, session_date, lap_count, best_lap_ms, imported_at
              FROM sessions ORDER BY imported_at DESC",
         )?;
         let rows = stmt.query_map([], row_to_session_summary)?;
         let mut sessions = rows.collect::<Result<Vec<_>, _>>()?;
-        // Align list cards with display cleanup (phantoms / sticky / coverage).
+        let mut library = Vec::with_capacity(sessions.len());
         for session in &mut sessions {
             let mut laps = self.load_lap_summaries(session.id)?;
             apply_lap_display_cleanup(&mut laps);
+            apply_subsession_deltas(&mut laps);
             session.lap_count = laps.len() as i32;
             session.best_lap_ms = best_pace_eligible_ms(&laps);
             session.session_type = latest_session_type(&laps);
+            let library_laps = laps
+                .iter()
+                .map(|lap| LibraryLap {
+                    id: lap.id,
+                    lap_number: lap.lap_number,
+                    lap_time_ms: lap.lap_time_ms,
+                    pace_eligible: lap.pace_eligible,
+                    session_type: lap.session_type.clone(),
+                    on_pit_road_start: lap.on_pit_road_start,
+                    on_pit_road_end: lap.on_pit_road_end,
+                    delta_to_best_ms: lap.delta_to_best_ms,
+                })
+                .collect();
+            library.push(LibrarySession {
+                session: session.clone(),
+                laps: library_laps,
+            });
         }
-        Ok(sessions)
+        Ok(library)
     }
 
     pub fn get_session(&self, session_id: i64) -> Result<Option<SessionDetail>> {
@@ -405,6 +469,314 @@ impl Database {
         session.best_lap_ms = best_pace_eligible_ms(&laps);
         session.session_type = latest_session_type(&laps);
         Ok(Some(SessionDetail { session, laps }))
+    }
+
+    pub fn list_lap_sets(&self) -> Result<Vec<LapSetSummary>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT s.id, s.name, s.track, s.created_at, COUNT(m.lap_id)
+             FROM lap_sets s
+             LEFT JOIN lap_set_members m ON m.set_id = s.id
+             GROUP BY s.id
+             ORDER BY s.created_at DESC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(LapSetSummary {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                track: row.get(2)?,
+                created_at: row.get(3)?,
+                lap_count: row.get(4)?,
+            })
+        })?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    pub fn get_lap_set(&self, set_id: i64) -> Result<Option<LapSetDetail>> {
+        let set = match self.lap_set_summary(set_id)? {
+            Some(set) => set,
+            None => return Ok(None),
+        };
+        let mut stmt = self.conn.prepare(
+            "SELECT l.id, s.id, s.car, s.session_date
+             FROM lap_set_members m
+             JOIN laps l ON l.id = m.lap_id
+             JOIN sessions s ON s.id = l.session_id
+             WHERE m.set_id = ?1
+             ORDER BY m.position",
+        )?;
+        let members = stmt.query_map(params![set_id], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+            ))
+        })?;
+        let members = members.collect::<Result<Vec<_>, _>>()?;
+        let laps = self.assemble_set_laps(members)?;
+        Ok(Some(LapSetDetail { set, laps }))
+    }
+
+    /// Load these laps for the compare workspace. Every lap must share one track.
+    pub fn load_laps(&self, lap_ids: &[i64]) -> Result<Vec<SetLap>> {
+        let mut seen = std::collections::HashSet::new();
+        let mut ids = Vec::new();
+        for lap_id in lap_ids {
+            if seen.insert(*lap_id) {
+                ids.push(*lap_id);
+            }
+        }
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let mut members = Vec::new();
+        let mut track: Option<String> = None;
+        for lap_id in ids {
+            let found: Option<(i64, String, String, String)> = self
+                .conn
+                .query_row(
+                    "SELECT s.id, s.track, s.car, s.session_date
+                     FROM laps l
+                     JOIN sessions s ON s.id = l.session_id
+                     WHERE l.id = ?1",
+                    params![lap_id],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+                )
+                .optional()?;
+            let Some((session_id, lap_track, car, session_date)) = found else {
+                anyhow::bail!("Lap {lap_id} was not found");
+            };
+            match &track {
+                None => track = Some(lap_track),
+                Some(current) if current == &lap_track => {}
+                Some(_) => anyhow::bail!("That lap is from a different track"),
+            }
+            members.push((lap_id, session_id, car, session_date));
+        }
+        self.assemble_set_laps(members)
+    }
+
+    fn assemble_set_laps(&self, members: Vec<(i64, i64, String, String)>) -> Result<Vec<SetLap>> {
+        let mut session_order: Vec<i64> = Vec::new();
+        for (_, session_id, _, _) in &members {
+            if !session_order.contains(session_id) {
+                session_order.push(*session_id);
+            }
+        }
+        let mut laps_by_session = std::collections::HashMap::new();
+        for session_id in session_order {
+            laps_by_session.insert(session_id, self.get_laps_for_session(session_id)?);
+        }
+
+        let mut laps = Vec::new();
+        for (lap_id, session_id, car, session_date) in members {
+            let Some(session_laps) = laps_by_session.get(&session_id) else {
+                continue;
+            };
+            let Some(lap) = session_laps.iter().find(|lap| lap.id == lap_id) else {
+                continue;
+            };
+            laps.push(SetLap {
+                session_id,
+                car,
+                session_date,
+                lap: lap.clone(),
+            });
+        }
+        let mut owned: Vec<LapSummary> = laps.iter().map(|row| row.lap.clone()).collect();
+        apply_set_deltas(&mut owned);
+        for (row, lap) in laps.iter_mut().zip(owned) {
+            row.lap = lap;
+        }
+        Ok(laps)
+    }
+
+    /// Create or replace a set. Every lap must belong to `track`.
+    pub fn save_lap_set(
+        &self,
+        id: Option<i64>,
+        name: &str,
+        track: &str,
+        lap_ids: &[i64],
+    ) -> Result<i64> {
+        let name = name.trim();
+        if name.is_empty() {
+            anyhow::bail!("Set name is required");
+        }
+        let track = track.trim();
+        if track.is_empty() {
+            anyhow::bail!("A set needs a track");
+        }
+        let mut seen = std::collections::HashSet::new();
+        let mut ids = Vec::new();
+        for lap_id in lap_ids {
+            if seen.insert(*lap_id) {
+                ids.push(*lap_id);
+            }
+        }
+        if ids.is_empty() {
+            anyhow::bail!("A set needs at least one lap");
+        }
+        for lap_id in &ids {
+            let lap_track: Option<String> = self
+                .conn
+                .query_row(
+                    "SELECT s.track FROM laps l
+                     JOIN sessions s ON s.id = l.session_id
+                     WHERE l.id = ?1",
+                    params![lap_id],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            match lap_track {
+                Some(found) if found == track => {}
+                Some(_) => anyhow::bail!("That lap is from a different track"),
+                None => anyhow::bail!("Lap {lap_id} was not found"),
+            }
+        }
+
+        let tx = self.conn.unchecked_transaction()?;
+        let set_id = if let Some(id) = id {
+            let existing: Option<String> = tx
+                .query_row(
+                    "SELECT track FROM lap_sets WHERE id = ?1",
+                    params![id],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            let Some(existing_track) = existing else {
+                anyhow::bail!("Set was not found");
+            };
+            if existing_track != track {
+                anyhow::bail!("A set stays on its track");
+            }
+            tx.execute(
+                "UPDATE lap_sets SET name = ?1 WHERE id = ?2",
+                params![name, id],
+            )?;
+            tx.execute("DELETE FROM lap_set_members WHERE set_id = ?1", params![id])?;
+            id
+        } else {
+            tx.execute(
+                "INSERT INTO lap_sets (name, track, created_at) VALUES (?1, ?2, ?3)",
+                params![name, track, chrono::Utc::now().to_rfc3339()],
+            )?;
+            tx.last_insert_rowid()
+        };
+        for (position, lap_id) in ids.iter().enumerate() {
+            tx.execute(
+                "INSERT INTO lap_set_members (set_id, lap_id, position) VALUES (?1, ?2, ?3)",
+                params![set_id, lap_id, position as i32],
+            )?;
+        }
+        tx.commit()?;
+        Ok(set_id)
+    }
+
+    pub fn delete_lap_set(&self, set_id: i64) -> Result<bool> {
+        let affected = self
+            .conn
+            .execute("DELETE FROM lap_sets WHERE id = ?1", params![set_id])?;
+        Ok(affected > 0)
+    }
+
+    pub fn list_lap_categories(&self) -> Result<Vec<LapCategory>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, rule_json, created_at FROM lap_categories ORDER BY created_at DESC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            let json: String = row.get(2)?;
+            let rule = serde_json::from_str(&json).unwrap_or_default();
+            Ok(LapCategory {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                rule,
+                created_at: row.get(3)?,
+            })
+        })?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
+    pub fn save_lap_category(
+        &self,
+        id: Option<i64>,
+        name: &str,
+        rule: &CategoryRule,
+    ) -> Result<i64> {
+        let name = name.trim();
+        if name.is_empty() {
+            anyhow::bail!("Category name is required");
+        }
+        let json = serde_json::to_string(rule)?;
+        if let Some(id) = id {
+            let affected = self.conn.execute(
+                "UPDATE lap_categories SET name = ?1, rule_json = ?2 WHERE id = ?3",
+                params![name, json, id],
+            )?;
+            if affected == 0 {
+                anyhow::bail!("Category was not found");
+            }
+            Ok(id)
+        } else {
+            self.conn.execute(
+                "INSERT INTO lap_categories (name, rule_json, created_at) VALUES (?1, ?2, ?3)",
+                params![name, json, chrono::Utc::now().to_rfc3339()],
+            )?;
+            Ok(self.conn.last_insert_rowid())
+        }
+    }
+
+    pub fn delete_lap_category(&self, category_id: i64) -> Result<bool> {
+        let affected = self.conn.execute(
+            "DELETE FROM lap_categories WHERE id = ?1",
+            params![category_id],
+        )?;
+        Ok(affected > 0)
+    }
+
+    /// Laps that match the rule right now. A category stores the rule, not these ids.
+    pub fn match_laps(&self, rule: &CategoryRule) -> Result<Vec<CategoryMatch>> {
+        let mut matches = Vec::new();
+        for entry in self.list_library()? {
+            if !session_passes_rule(rule, &entry.session) {
+                continue;
+            }
+            for lap in self.get_laps_for_session(entry.session.id)? {
+                if lap_matches_rule(rule, &entry.session, &lap) {
+                    matches.push(CategoryMatch {
+                        session_id: entry.session.id,
+                        track: entry.session.track.clone(),
+                        car: entry.session.car.clone(),
+                        session_date: entry.session.session_date.clone(),
+                        lap,
+                    });
+                }
+            }
+        }
+        Ok(matches)
+    }
+
+    fn lap_set_summary(&self, set_id: i64) -> Result<Option<LapSetSummary>> {
+        self.conn
+            .query_row(
+                "SELECT s.id, s.name, s.track, s.created_at, COUNT(m.lap_id)
+                 FROM lap_sets s
+                 LEFT JOIN lap_set_members m ON m.set_id = s.id
+                 WHERE s.id = ?1
+                 GROUP BY s.id",
+                params![set_id],
+                |row| {
+                    Ok(LapSetSummary {
+                        id: row.get(0)?,
+                        name: row.get(1)?,
+                        track: row.get(2)?,
+                        created_at: row.get(3)?,
+                        lap_count: row.get(4)?,
+                    })
+                },
+            )
+            .optional()
+            .map_err(Into::into)
     }
 
     fn get_session_summary(&self, session_id: i64) -> Result<Option<SessionSummary>> {
@@ -478,31 +850,8 @@ impl Database {
     fn get_laps_for_session(&self, session_id: i64) -> Result<Vec<LapSummary>> {
         let mut laps = self.load_lap_summaries(session_id)?;
         apply_lap_display_cleanup(&mut laps);
-
-        // Fastest pace-eligible lap per sub-session sets the delta baseline.
-        let mut best_by_subsession: std::collections::HashMap<i32, f64> =
-            std::collections::HashMap::new();
-        for lap in &laps {
-            if lap.pace_eligible {
-                if let Some(lt) = lap.lap_time_ms {
-                    best_by_subsession
-                        .entry(lap.session_num)
-                        .and_modify(|best| {
-                            if lt < *best {
-                                *best = lt;
-                            }
-                        })
-                        .or_insert(lt);
-                }
-            }
-        }
-
+        apply_subsession_deltas(&mut laps);
         for lap in &mut laps {
-            lap.delta_to_best_ms = match (lap.lap_time_ms, best_by_subsession.get(&lap.session_num))
-            {
-                (Some(lt), Some(best)) if lt > 0.0 && *best > 0.0 => Some(lt - best),
-                _ => None,
-            };
             lap.sectors = self.get_sectors(lap.id)?;
         }
         Ok(laps)
@@ -649,6 +998,43 @@ fn apply_lap_display_cleanup(laps: &mut Vec<LapSummary>) {
     }
 }
 
+/// Delta versus the fastest pace-eligible lap in each lap's own sub-session.
+fn apply_subsession_deltas(laps: &mut [LapSummary]) {
+    let mut best_by_subsession: std::collections::HashMap<i32, f64> =
+        std::collections::HashMap::new();
+    for lap in laps.iter() {
+        if lap.pace_eligible {
+            if let Some(time) = lap.lap_time_ms {
+                best_by_subsession
+                    .entry(lap.session_num)
+                    .and_modify(|best| {
+                        if time < *best {
+                            *best = time;
+                        }
+                    })
+                    .or_insert(time);
+            }
+        }
+    }
+    for lap in laps.iter_mut() {
+        lap.delta_to_best_ms = match (lap.lap_time_ms, best_by_subsession.get(&lap.session_num)) {
+            (Some(time), Some(best)) if time > 0.0 && *best > 0.0 => Some(time - best),
+            _ => None,
+        };
+    }
+}
+
+/// Delta versus the fastest pace-eligible lap in this list (a saved set, not a sub-session).
+fn apply_set_deltas(laps: &mut [LapSummary]) {
+    let best = best_pace_eligible_ms(laps);
+    for lap in laps.iter_mut() {
+        lap.delta_to_best_ms = match (lap.lap_time_ms, best) {
+            (Some(time), Some(best)) if time > 0.0 && best > 0.0 => Some(time - best),
+            _ => None,
+        };
+    }
+}
+
 fn best_pace_eligible_ms(laps: &[LapSummary]) -> Option<f64> {
     laps.iter()
         .filter(|l| l.pace_eligible)
@@ -696,4 +1082,98 @@ pub fn db_path() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("."))
         .join("race-refinery")
         .join("race-refinery.db")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn insert_outing(db: &Database, path: &str, track: &str, car: &str, date: &str) -> i64 {
+        db.conn
+            .execute(
+                "INSERT INTO sessions (ibt_path, file_hash, track, car, session_date, imported_at)
+                 VALUES (?1, ?1, ?2, ?3, ?4, ?4)",
+                params![path, track, car, date],
+            )
+            .unwrap();
+        db.conn.last_insert_rowid()
+    }
+
+    fn insert_lap(db: &Database, session_id: i64, number: i32, time_ms: f64, pace: bool) -> i64 {
+        db.conn
+            .execute(
+                "INSERT INTO laps (
+                    session_id, session_type, iracing_lap, lap_number, lap_time_ms,
+                    delta_best_ok, delta_session_best_ok, lap_dist_pct_min, lap_dist_pct_max,
+                    pace_eligible
+                 ) VALUES (?1, 'Race', ?2, ?2, ?3, ?4, ?4, 0, 1, ?4)",
+                params![session_id, number, time_ms, if pace { 1 } else { 0 }],
+            )
+            .unwrap();
+        db.conn.last_insert_rowid()
+    }
+
+    #[test]
+    fn set_refuses_another_track_and_deltas_use_the_set_best() {
+        let db = Database::open_in_memory().unwrap();
+        let spa = insert_outing(&db, "a.ibt", "Spa", "Ferrari", "2026-04-01T00:00:00+00:00");
+        let monza = insert_outing(
+            &db,
+            "b.ibt",
+            "Monza",
+            "Ferrari",
+            "2026-04-02T00:00:00+00:00",
+        );
+        let fast = insert_lap(&db, spa, 1, 90_000.0, true);
+        let slow = insert_lap(&db, spa, 2, 91_000.0, true);
+        let elsewhere = insert_lap(&db, monza, 1, 80_000.0, true);
+
+        let refused = db.save_lap_set(None, "Mix", "Spa", &[fast, elsewhere]);
+        assert!(refused.is_err());
+        assert!(db.load_laps(&[fast, elsewhere]).is_err());
+        let loaded = db.load_laps(&[slow, fast]).unwrap();
+        assert_eq!(loaded[0].lap.delta_to_best_ms, Some(1_000.0));
+        let library = db.list_library().unwrap();
+        let spa_row = library
+            .iter()
+            .find(|row| row.session.track == "Spa")
+            .unwrap();
+        let slow_row = spa_row.laps.iter().find(|lap| lap.id == slow).unwrap();
+        assert_eq!(slow_row.delta_to_best_ms, Some(1_000.0));
+        assert!(!slow_row.on_pit_road_start);
+
+        let id = db
+            .save_lap_set(None, "Race pace", "Spa", &[slow, fast])
+            .unwrap();
+        let detail = db.get_lap_set(id).unwrap().unwrap();
+        assert_eq!(detail.laps.len(), 2);
+        assert_eq!(detail.laps[0].lap.id, slow);
+        assert_eq!(detail.laps[0].lap.delta_to_best_ms, Some(1_000.0));
+        assert_eq!(detail.laps[1].lap.delta_to_best_ms, Some(0.0));
+        assert_eq!(detail.laps[0].car, "Ferrari");
+
+        db.delete_session(spa).unwrap();
+        let after = db.get_lap_set(id).unwrap().unwrap();
+        assert!(after.laps.is_empty());
+    }
+
+    #[test]
+    fn category_requeries_instead_of_storing_ids() {
+        let db = Database::open_in_memory().unwrap();
+        let spa = insert_outing(&db, "a.ibt", "Spa", "Ferrari", "2026-04-01T00:00:00+00:00");
+        insert_lap(&db, spa, 1, 90_000.0, true);
+        insert_lap(&db, spa, 2, 91_000.0, false);
+        let rule = CategoryRule {
+            track: Some("Spa".into()),
+            pace_eligible_only: Some(true),
+            ..CategoryRule::default()
+        };
+        let id = db.save_lap_category(None, "Clean Spa", &rule).unwrap();
+        let stored = db.list_lap_categories().unwrap();
+        assert_eq!(stored[0].id, id);
+        assert_eq!(stored[0].rule.track.as_deref(), Some("Spa"));
+        let matches = db.match_laps(&stored[0].rule).unwrap();
+        assert_eq!(matches.len(), 1);
+        assert!(matches[0].lap.pace_eligible);
+    }
 }
