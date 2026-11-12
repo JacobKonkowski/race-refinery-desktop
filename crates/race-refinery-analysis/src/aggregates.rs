@@ -61,9 +61,7 @@ pub fn tire_pressure_averages(
 }
 
 /// Mean inner/outer tire temps (°C) for each corner: `(lf_l, lf_r, rf_l, rf_r, lr_l, lr_r, rr_l, rr_r)`.
-pub fn tire_edge_temp_averages(
-    frames: &[RawFrame],
-) -> [Option<f64>; 8] {
+pub fn tire_edge_temp_averages(frames: &[RawFrame]) -> [Option<f64>; 8] {
     [
         optional_mean(frames.iter().filter_map(|f| f.lf_temp_l.map(f64::from))),
         optional_mean(frames.iter().filter_map(|f| f.lf_temp_r.map(f64::from))),
@@ -95,9 +93,11 @@ pub fn lap_channel_averages(frames: &[RawFrame]) -> LapChannelAverages {
         voltage: optional_mean(frames.iter().filter_map(|f| f.voltage.map(f64::from))),
         brake_bias: optional_mean(frames.iter().filter_map(|f| f.brake_bias.map(f64::from))),
         abs_cut_pct: optional_mean(frames.iter().filter_map(|f| f.abs_cut_pct.map(f64::from))),
-        tc_active: optional_mean(frames.iter().filter_map(|f| {
-            f.tc_active.map(|active| if active { 1.0 } else { 0.0 })
-        })),
+        tc_active: optional_mean(
+            frames
+                .iter()
+                .filter_map(|f| f.tc_active.map(|active| if active { 1.0 } else { 0.0 })),
+        ),
     }
 }
 

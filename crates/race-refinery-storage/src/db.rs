@@ -1399,7 +1399,10 @@ mod tests {
         let detail = db.get_session(id).unwrap().unwrap();
         assert_eq!(detail.session.weather_air_temp, Some(20.5));
         assert_eq!(detail.session.weather_skies.as_deref(), Some("Clear"));
-        assert_eq!(detail.session.car_setup_yaml.as_deref(), Some("Update: null\n"));
+        assert_eq!(
+            detail.session.car_setup_yaml.as_deref(),
+            Some("Update: null\n")
+        );
         assert_eq!(detail.session.player_irating, Some(1500));
         assert_eq!(detail.session.player_sr, Some(3.45));
         assert_eq!(detail.session.incidents, Some(4));
