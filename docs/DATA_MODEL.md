@@ -74,7 +74,7 @@ tag laps and corners when another car was nearby.
 
 ### `lap_sets` and `lap_set_members` (schema v11)
 
-A set is a named list of lap ids that share one track. Members store `position`. Deleting the set or the lap removes the membership (`ON DELETE CASCADE`). Importing a new session does not change a set. Loading a set reports each lap's delta against the fastest pace-eligible lap in that set. Analyze UI Save and Sets browse are deferred together for the Library-first cut; the table and set CRUD commands remain.
+A set is a named list of lap ids that share one track. Members store `position`. Deleting the set or the lap removes the membership (`ON DELETE CASCADE`). Importing a new session does not change a set. Loading a set reports each lap's delta against the fastest pace-eligible lap in that set. Set Save / Open UI is deferred to a later Sets tab; Filters remain deferred.
 
 ### `lap_categories` (schema v11)
 
