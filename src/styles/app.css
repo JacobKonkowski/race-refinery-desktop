@@ -529,6 +529,19 @@
   height: auto;
 }
 
+/* Keep Pedals | Lines on one row in the narrow map column. */
+.analyze-map-cell .panel-header > .muted {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analyze-map-cell .panel-header .btn-row {
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
 .analyze-lap-picker .panel-header {
   display: flex;
   align-items: center;
