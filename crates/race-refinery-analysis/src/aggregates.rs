@@ -38,25 +38,72 @@ pub fn tire_averages(frames: &[RawFrame]) -> (Option<f64>, Option<f64>, Option<f
     )
 }
 
+fn optional_mean(values: impl Iterator<Item = f64>) -> Option<f64> {
+    let mut sum = 0.0;
+    let mut n = 0usize;
+    for v in values {
+        sum += v;
+        n += 1;
+    }
+    (n > 0).then_some(sum / n as f64)
+}
+
 /// `(lf, rf, lr, rr)` mean tire pressures (kPa), `None` when no sample carried pressure.
 pub fn tire_pressure_averages(
     frames: &[RawFrame],
 ) -> (Option<f64>, Option<f64>, Option<f64>, Option<f64>) {
-    fn mean(values: impl Iterator<Item = f64>) -> Option<f64> {
-        let mut sum = 0.0;
-        let mut n = 0usize;
-        for v in values {
-            sum += v;
-            n += 1;
-        }
-        (n > 0).then_some(sum / n as f64)
-    }
     (
-        mean(frames.iter().filter_map(|f| f.lf_pressure.map(f64::from))),
-        mean(frames.iter().filter_map(|f| f.rf_pressure.map(f64::from))),
-        mean(frames.iter().filter_map(|f| f.lr_pressure.map(f64::from))),
-        mean(frames.iter().filter_map(|f| f.rr_pressure.map(f64::from))),
+        optional_mean(frames.iter().filter_map(|f| f.lf_pressure.map(f64::from))),
+        optional_mean(frames.iter().filter_map(|f| f.rf_pressure.map(f64::from))),
+        optional_mean(frames.iter().filter_map(|f| f.lr_pressure.map(f64::from))),
+        optional_mean(frames.iter().filter_map(|f| f.rr_pressure.map(f64::from))),
     )
+}
+
+/// Mean inner/outer tire temps (°C) for each corner: `(lf_l, lf_r, rf_l, rf_r, lr_l, lr_r, rr_l, rr_r)`.
+pub fn tire_edge_temp_averages(
+    frames: &[RawFrame],
+) -> [Option<f64>; 8] {
+    [
+        optional_mean(frames.iter().filter_map(|f| f.lf_temp_l.map(f64::from))),
+        optional_mean(frames.iter().filter_map(|f| f.lf_temp_r.map(f64::from))),
+        optional_mean(frames.iter().filter_map(|f| f.rf_temp_l.map(f64::from))),
+        optional_mean(frames.iter().filter_map(|f| f.rf_temp_r.map(f64::from))),
+        optional_mean(frames.iter().filter_map(|f| f.lr_temp_l.map(f64::from))),
+        optional_mean(frames.iter().filter_map(|f| f.lr_temp_r.map(f64::from))),
+        optional_mean(frames.iter().filter_map(|f| f.rr_temp_l.map(f64::from))),
+        optional_mean(frames.iter().filter_map(|f| f.rr_temp_r.map(f64::from))),
+    ]
+}
+
+/// Lap-mean engine / aid channels when present.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct LapChannelAverages {
+    pub oil_temp: Option<f64>,
+    pub water_temp: Option<f64>,
+    pub voltage: Option<f64>,
+    pub brake_bias: Option<f64>,
+    pub abs_cut_pct: Option<f64>,
+    /// Duty cycle (0..1) of a dedicated TC-active channel; `None` if absent.
+    pub tc_active: Option<f64>,
+}
+
+pub fn lap_channel_averages(frames: &[RawFrame]) -> LapChannelAverages {
+    LapChannelAverages {
+        oil_temp: optional_mean(frames.iter().filter_map(|f| f.oil_temp.map(f64::from))),
+        water_temp: optional_mean(frames.iter().filter_map(|f| f.water_temp.map(f64::from))),
+        voltage: optional_mean(frames.iter().filter_map(|f| f.voltage.map(f64::from))),
+        brake_bias: optional_mean(frames.iter().filter_map(|f| f.brake_bias.map(f64::from))),
+        abs_cut_pct: optional_mean(frames.iter().filter_map(|f| f.abs_cut_pct.map(f64::from))),
+        tc_active: optional_mean(frames.iter().filter_map(|f| {
+            f.tc_active.map(|active| if active { 1.0 } else { 0.0 })
+        })),
+    }
+}
+
+/// `PlayerCarMyIncidentCount` on the last frame that carried it.
+pub fn end_incident_count(frames: &[RawFrame]) -> Option<i32> {
+    frames.iter().rev().find_map(|f| f.incident_count)
 }
 
 /// Mean speed (m/s), `None` when there are no frames.
@@ -136,6 +183,29 @@ mod tests {
         assert_eq!(average_speed(&frames), Some(50.0));
         let (lf, _, _, _) = tire_averages(&frames);
         assert_eq!(lf, Some(85.0));
+    }
+
+    #[test]
+    fn optional_channels_mean_only_present_samples() {
+        let mut a = frame(50.0, 40.0, 80.0);
+        a.oil_temp = Some(90.0);
+        a.lf_temp_l = Some(70.0);
+        a.tc_active = Some(true);
+        a.incident_count = Some(2);
+        let mut b = frame(50.0, 60.0, 90.0);
+        b.oil_temp = Some(100.0);
+        b.lf_temp_l = Some(80.0);
+        b.tc_active = Some(false);
+        b.incident_count = Some(4);
+        let frames = vec![a, b];
+        let channels = lap_channel_averages(&frames);
+        assert_eq!(channels.oil_temp, Some(95.0));
+        assert_eq!(channels.tc_active, Some(0.5));
+        assert_eq!(channels.brake_bias, None);
+        let edges = tire_edge_temp_averages(&frames);
+        assert_eq!(edges[0], Some(75.0));
+        assert_eq!(edges[1], None);
+        assert_eq!(end_incident_count(&frames), Some(4));
     }
 
     #[test]

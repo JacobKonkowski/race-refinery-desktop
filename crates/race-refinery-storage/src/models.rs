@@ -23,6 +23,33 @@ pub struct SessionSummary {
     pub imported_at: String,
     /// Session type of the latest sub-session (by `session_num`), e.g. "Race". Derived, not stored.
     pub session_type: String,
+    /// Weather / setup / ratings / incidents from IBT import (schema v12). Stored only.
+    #[serde(default)]
+    pub weather_air_temp: Option<f64>,
+    #[serde(default)]
+    pub weather_track_temp: Option<f64>,
+    #[serde(default)]
+    pub weather_wind_vel: Option<f64>,
+    #[serde(default)]
+    pub weather_wind_dir: Option<f64>,
+    #[serde(default)]
+    pub weather_humidity: Option<f64>,
+    #[serde(default)]
+    pub weather_precip: Option<f64>,
+    #[serde(default)]
+    pub weather_skies: Option<String>,
+    #[serde(default)]
+    pub car_setup_yaml: Option<String>,
+    #[serde(default)]
+    pub player_irating: Option<i32>,
+    #[serde(default)]
+    pub player_lic_string: Option<String>,
+    #[serde(default)]
+    pub player_lic_level: Option<i32>,
+    #[serde(default)]
+    pub player_sr: Option<f64>,
+    #[serde(default)]
+    pub incidents: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,6 +89,38 @@ pub struct LapSummary {
     pub rf_pressure: Option<f64>,
     pub lr_pressure: Option<f64>,
     pub rr_pressure: Option<f64>,
+    /// Mean inner/outer tire temps (°C); `null` before schema v12 / without channel.
+    #[serde(default)]
+    pub lf_temp_l: Option<f64>,
+    #[serde(default)]
+    pub lf_temp_r: Option<f64>,
+    #[serde(default)]
+    pub rf_temp_l: Option<f64>,
+    #[serde(default)]
+    pub rf_temp_r: Option<f64>,
+    #[serde(default)]
+    pub lr_temp_l: Option<f64>,
+    #[serde(default)]
+    pub lr_temp_r: Option<f64>,
+    #[serde(default)]
+    pub rr_temp_l: Option<f64>,
+    #[serde(default)]
+    pub rr_temp_r: Option<f64>,
+    #[serde(default)]
+    pub oil_temp: Option<f64>,
+    #[serde(default)]
+    pub water_temp: Option<f64>,
+    #[serde(default)]
+    pub voltage: Option<f64>,
+    #[serde(default)]
+    pub brake_bias: Option<f64>,
+    #[serde(default)]
+    pub abs_cut_pct: Option<f64>,
+    /// Dedicated TC-active duty cycle (0..1); never inferred from throttle gap.
+    #[serde(default)]
+    pub tc_active: Option<f64>,
+    #[serde(default)]
+    pub incidents: Option<i32>,
     /// True when the lap has at least one sparse traffic event.
     pub has_traffic: bool,
     pub sectors: Vec<SectorTime>,
@@ -264,6 +323,19 @@ mod tests {
             best_lap_ms: Some(90_000.0),
             imported_at: String::new(),
             session_type: "Race".into(),
+            weather_air_temp: None,
+            weather_track_temp: None,
+            weather_wind_vel: None,
+            weather_wind_dir: None,
+            weather_humidity: None,
+            weather_precip: None,
+            weather_skies: None,
+            car_setup_yaml: None,
+            player_irating: None,
+            player_lic_string: None,
+            player_lic_level: None,
+            player_sr: None,
+            incidents: None,
         }
     }
 
@@ -293,6 +365,21 @@ mod tests {
             rf_pressure: None,
             lr_pressure: None,
             rr_pressure: None,
+            lf_temp_l: None,
+            lf_temp_r: None,
+            rf_temp_l: None,
+            rf_temp_r: None,
+            lr_temp_l: None,
+            lr_temp_r: None,
+            rr_temp_l: None,
+            rr_temp_r: None,
+            oil_temp: None,
+            water_temp: None,
+            voltage: None,
+            brake_bias: None,
+            abs_cut_pct: None,
+            tc_active: None,
+            incidents: None,
             has_traffic: false,
             sectors: Vec::new(),
             delta_to_best_ms: delta,

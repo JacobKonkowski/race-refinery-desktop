@@ -133,24 +133,8 @@ mod tests {
             lap_time_ms: time,
             delta_best_ok: ok,
             delta_session_best_ok: ok,
-            on_pit_road_start: false,
-            on_pit_road_end: false,
-            lap_dist_pct_min: 0.0,
             lap_dist_pct_max: max_pct,
-            fuel_start: None,
-            fuel_used: None,
-            avg_speed: None,
-            lf_temp: None,
-            rf_temp: None,
-            lr_temp: None,
-            rr_temp: None,
-            lf_pressure: None,
-            rf_pressure: None,
-            lr_pressure: None,
-            rr_pressure: None,
-            sectors: vec![],
-            traces: vec![],
-            traffic_events: vec![],
+            ..Default::default()
         }
     }
 

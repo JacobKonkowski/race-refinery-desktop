@@ -32,6 +32,6 @@ pub use track_map::{
 };
 pub use traffic::{events_for_lap, field_nearby, TrafficSample, NEARBY_PCT};
 pub use types::{
-    AnalyzedLap, AnalyzedSession, LapFrames, RawFrame, SectorBoundary, SessionMeta, TracePoint,
-    TrafficEvent,
+    AnalyzedLap, AnalyzedSession, LapFrames, PlayerRatingSnapshot, RawFrame, SectorBoundary,
+    SessionMeta, TracePoint, TrafficEvent, WeatherSnapshot,
 };

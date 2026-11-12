@@ -19,6 +19,20 @@ export interface SessionSummary {
   importedAt: string;
   /** Session type of the latest sub-session (by session number), e.g. "Race". */
   sessionType: string;
+  /** IBT import collect (schema v12). Stored only — no Analyze UI yet. */
+  weatherAirTemp?: number | null;
+  weatherTrackTemp?: number | null;
+  weatherWindVel?: number | null;
+  weatherWindDir?: number | null;
+  weatherHumidity?: number | null;
+  weatherPrecip?: number | null;
+  weatherSkies?: string | null;
+  carSetupYaml?: string | null;
+  playerIrating?: number | null;
+  playerLicString?: string | null;
+  playerLicLevel?: number | null;
+  playerSr?: number | null;
+  incidents?: number | null;
 }
 
 export interface SectorTime {
@@ -54,6 +68,23 @@ export interface LapSummary {
   rfPressure: number | null;
   lrPressure: number | null;
   rrPressure: number | null;
+  /** Mean inner/outer tire temps (°C); null before schema v12 / without channel. */
+  lfTempL?: number | null;
+  lfTempR?: number | null;
+  rfTempL?: number | null;
+  rfTempR?: number | null;
+  lrTempL?: number | null;
+  lrTempR?: number | null;
+  rrTempL?: number | null;
+  rrTempR?: number | null;
+  oilTemp?: number | null;
+  waterTemp?: number | null;
+  voltage?: number | null;
+  brakeBias?: number | null;
+  absCutPct?: number | null;
+  /** Dedicated TC-active duty cycle (0..1); never inferred from throttle gap. */
+  tcActive?: number | null;
+  incidents?: number | null;
   /** True when the lap has at least one sparse traffic event. */
   hasTraffic: boolean;
   sectors: SectorTime[];

@@ -3140,6 +3140,7 @@ dependencies = [
  "race-refinery-analysis",
  "race-refinery-storage",
  "race-refinery-telemetry",
+ "serde_yaml_ng",
  "sha2",
  "tauri",
  "tokio",

@@ -7,7 +7,8 @@
 use rayon::prelude::*;
 
 use super::aggregates::{
-    average_speed, downsample_traces, fuel_stats, tire_averages, tire_pressure_averages,
+    average_speed, downsample_traces, end_incident_count, fuel_stats, lap_channel_averages,
+    tire_averages, tire_edge_temp_averages, tire_pressure_averages,
 };
 use super::cleanup::finalize_analyzed_laps;
 use super::sectors::compute_sector_times;
@@ -34,10 +35,16 @@ pub fn analyze_session(frames: Vec<super::types::RawFrame>, meta: &SessionMeta) 
     });
     let laps = finalize_analyzed_laps(laps);
 
+    let incidents = laps.iter().rev().find_map(|lap| lap.incidents);
+
     AnalyzedSession {
         track: meta.track.clone(),
         car: meta.car.clone(),
         session_date: meta.session_date.clone(),
+        weather: meta.weather.clone(),
+        car_setup_yaml: meta.car_setup_yaml.clone(),
+        player_rating: meta.player_rating.clone(),
+        incidents,
         laps,
         track_map,
     }
@@ -49,6 +56,9 @@ fn analyze_lap(group: LapFrames, boundaries: &[super::types::SectorBoundary]) ->
     let (fuel_start, fuel_used) = fuel_stats(frames);
     let (lf_temp, rf_temp, lr_temp, rr_temp) = tire_averages(frames);
     let (lf_pressure, rf_pressure, lr_pressure, rr_pressure) = tire_pressure_averages(frames);
+    let [lf_temp_l, lf_temp_r, rf_temp_l, rf_temp_r, lr_temp_l, lr_temp_r, rr_temp_l, rr_temp_r] =
+        tire_edge_temp_averages(frames);
+    let channels = lap_channel_averages(frames);
     let sectors = compute_sector_times(frames, boundaries);
     let traces = downsample_traces(frames);
 
@@ -78,6 +88,21 @@ fn analyze_lap(group: LapFrames, boundaries: &[super::types::SectorBoundary]) ->
         rf_pressure,
         lr_pressure,
         rr_pressure,
+        lf_temp_l,
+        lf_temp_r,
+        rf_temp_l,
+        rf_temp_r,
+        lr_temp_l,
+        lr_temp_r,
+        rr_temp_l,
+        rr_temp_r,
+        oil_temp: channels.oil_temp,
+        water_temp: channels.water_temp,
+        voltage: channels.voltage,
+        brake_bias: channels.brake_bias,
+        abs_cut_pct: channels.abs_cut_pct,
+        tc_active: channels.tc_active,
+        incidents: end_incident_count(frames),
         sectors,
         traces,
         traffic_events: Vec::new(),
@@ -134,6 +159,7 @@ mod tests {
                 },
             ],
             session_labels: HashMap::from([(0, "Practice".to_string())]),
+            ..Default::default()
         }
     }
 

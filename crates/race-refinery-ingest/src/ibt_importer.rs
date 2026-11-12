@@ -15,7 +15,8 @@ use std::time::Instant;
 use tracing::info;
 
 use race_refinery_analysis::{
-    analyze_session, events_for_lap, AnalyzedSession, SectorBoundary, SessionMeta,
+    analyze_session, events_for_lap, AnalyzedSession, PlayerRatingSnapshot, SectorBoundary,
+    SessionMeta, WeatherSnapshot,
 };
 
 use super::frame_extractor::FastFrameExtractor;
@@ -100,6 +101,9 @@ pub fn parse_ibt_file_fast(
         session_date: extract_session_date(path),
         sector_boundaries: extract_sectors(&session_info),
         session_labels: build_session_labels(&session_info),
+        weather: extract_weather(&session_info),
+        car_setup_yaml: extract_car_setup_yaml(&session_info),
+        player_rating: extract_player_rating(&session_info),
     };
 
     let extractor = FastFrameExtractor::from_schema(reader.variables())?;
@@ -325,21 +329,72 @@ fn build_session_labels(session: &SessionInfo) -> HashMap<i32, String> {
 }
 
 fn extract_car_name(session: &SessionInfo) -> String {
-    if let Some(driver_info) = &session.driver_info {
-        let car_idx = driver_info.driver_car_idx.unwrap_or(-1);
-        if let Some(drivers) = &driver_info.drivers {
-            for driver in drivers {
-                if driver.car_idx == car_idx {
-                    return driver
-                        .car_screen_name
-                        .clone()
-                        .or_else(|| driver.car_path.clone())
-                        .unwrap_or_else(|| "Unknown Car".into());
-                }
-            }
-        }
+    if let Some(driver) = player_driver(session) {
+        return driver
+            .car_screen_name
+            .clone()
+            .or_else(|| driver.car_path.clone())
+            .unwrap_or_else(|| "Unknown Car".into());
     }
     "Unknown Car".into()
+}
+
+fn player_driver(session: &SessionInfo) -> Option<&pitwall::schema::session::Driver> {
+    let driver_info = session.driver_info.as_ref()?;
+    let car_idx = driver_info.driver_car_idx.unwrap_or(-1);
+    driver_info
+        .drivers
+        .as_ref()?
+        .iter()
+        .find(|driver| driver.car_idx == car_idx)
+}
+
+fn extract_weather(session: &SessionInfo) -> WeatherSnapshot {
+    let w = &session.weekend_info;
+    WeatherSnapshot {
+        air_temp: parse_yaml_number(w.track_air_temp.as_deref()),
+        track_temp: parse_yaml_number(
+            w.track_surface_temp_crew
+                .as_deref()
+                .or(w.track_surface_temp.as_deref()),
+        ),
+        wind_vel: parse_yaml_number(w.track_wind_vel.as_deref()),
+        wind_dir: parse_yaml_number(w.track_wind_dir.as_deref()),
+        humidity: parse_yaml_number(w.track_relative_humidity.as_deref()),
+        precip: parse_yaml_number(w.track_precipitation.as_deref()),
+        skies: w.track_skies.clone(),
+    }
+}
+
+fn extract_car_setup_yaml(session: &SessionInfo) -> Option<String> {
+    let setup = session.car_setup.as_ref()?;
+    serde_yaml_ng::to_string(setup).ok()
+}
+
+fn extract_player_rating(session: &SessionInfo) -> PlayerRatingSnapshot {
+    let Some(driver) = player_driver(session) else {
+        return PlayerRatingSnapshot::default();
+    };
+    PlayerRatingSnapshot {
+        irating: driver.i_rating,
+        lic_string: driver.lic_string.clone(),
+        lic_level: driver.lic_level,
+        sr: driver.lic_sub_level.map(|sub| f64::from(sub) / 100.0),
+    }
+}
+
+/// Parse the leading number from YAML weather strings like `"20.69 C"` / `"3.2 m/s"`.
+fn parse_yaml_number(raw: Option<&str>) -> Option<f64> {
+    let raw = raw?.trim();
+    if raw.is_empty() {
+        return None;
+    }
+    let end = raw
+        .char_indices()
+        .find(|(_, ch)| !(ch.is_ascii_digit() || *ch == '.' || *ch == '-' || *ch == '+'))
+        .map(|(i, _)| i)
+        .unwrap_or(raw.len());
+    raw[..end].parse().ok()
 }
 
 /// Sector split lines from the session YAML. Empty when the file provides none —
@@ -400,7 +455,7 @@ pub fn scan_ibt_files(dir: &Path) -> Result<Vec<PathBuf>> {
 
 #[cfg(test)]
 mod tests {
-    use super::decode_iracing_text;
+    use super::{decode_iracing_text, parse_yaml_number};
 
     const INTERLAGOS: &str = "Autódromo José Carlos Pace";
 
@@ -424,5 +479,14 @@ mod tests {
         let mut bytes = INTERLAGOS.as_bytes().to_vec();
         bytes.push(0);
         assert_eq!(decode_iracing_text(&bytes), INTERLAGOS);
+    }
+
+    #[test]
+    fn weather_yaml_numbers_strip_units() {
+        assert_eq!(parse_yaml_number(Some("20.69 C")), Some(20.69));
+        assert_eq!(parse_yaml_number(Some("3.2 m/s")), Some(3.2));
+        assert_eq!(parse_yaml_number(Some("55 %")), Some(55.0));
+        assert_eq!(parse_yaml_number(Some("")), None);
+        assert_eq!(parse_yaml_number(None), None);
     }
 }

@@ -81,6 +81,30 @@ pub struct RawFrame {
     pub rf_pressure: Option<f32>,
     pub lr_pressure: Option<f32>,
     pub rr_pressure: Option<f32>,
+    /// Inner/outer surface tire temps (°C). `None` when the channel is absent.
+    pub lf_temp_l: Option<f32>,
+    pub lf_temp_r: Option<f32>,
+    pub rf_temp_l: Option<f32>,
+    pub rf_temp_r: Option<f32>,
+    pub lr_temp_l: Option<f32>,
+    pub lr_temp_r: Option<f32>,
+    pub rr_temp_l: Option<f32>,
+    pub rr_temp_r: Option<f32>,
+    /// `OilTemp` (°C).
+    pub oil_temp: Option<f32>,
+    /// `WaterTemp` (°C).
+    pub water_temp: Option<f32>,
+    /// `Voltage`.
+    pub voltage: Option<f32>,
+    /// `dcBrakeBias` (percent).
+    pub brake_bias: Option<f32>,
+    /// `BrakeABScutPct` when published.
+    pub abs_cut_pct: Option<f32>,
+    /// Dedicated TC-active channel when one exists for the car. Never inferred
+    /// from throttle raw−applied.
+    pub tc_active: Option<bool>,
+    /// `PlayerCarMyIncidentCount` when published.
+    pub incident_count: Option<i32>,
 }
 
 /// A sector split line from the session YAML `SplitTimeInfo.Sectors[]`.
@@ -89,6 +113,28 @@ pub struct RawFrame {
 pub struct SectorBoundary {
     pub sector_num: i32,
     pub start_pct: f64,
+}
+
+/// Weather snapshot from session YAML `WeekendInfo` (IBT open / connect).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct WeatherSnapshot {
+    pub air_temp: Option<f64>,
+    pub track_temp: Option<f64>,
+    pub wind_vel: Option<f64>,
+    pub wind_dir: Option<f64>,
+    pub humidity: Option<f64>,
+    pub precip: Option<f64>,
+    pub skies: Option<String>,
+}
+
+/// Player iR / licence / SR from session YAML (player driver only).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct PlayerRatingSnapshot {
+    pub irating: Option<i32>,
+    pub lic_string: Option<String>,
+    pub lic_level: Option<i32>,
+    /// Safety rating ≈ `LicSubLevel / 100`.
+    pub sr: Option<f64>,
 }
 
 /// Session-level metadata resolved from the IBT session YAML.
@@ -100,4 +146,8 @@ pub struct SessionMeta {
     pub sector_boundaries: Vec<SectorBoundary>,
     /// Map of `SessionNum` -> human label (e.g. "Practice", "Race").
     pub session_labels: std::collections::HashMap<i32, String>,
+    pub weather: WeatherSnapshot,
+    /// Full `CarSetup` tree serialized as YAML text when present.
+    pub car_setup_yaml: Option<String>,
+    pub player_rating: PlayerRatingSnapshot,
 }

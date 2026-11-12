@@ -1,8 +1,8 @@
 # Data model
 
-SQLite at `%LOCALAPPDATA%\race-refinery\` (see `storage/db.rs`). **`PRAGMA user_version = 11`**.
+SQLite at `%LOCALAPPDATA%\race-refinery\` (see `storage/db.rs`). **`PRAGMA user_version = 12`**.
 
-Opening a pre-v2 DB drops analysis tables (`sessions`, `laps`, `sectors`, `lap_traces`) and requires reimport. v2 → v11 are additive migrations (GPS, elapsed time, raw pedals, ABS, RPM, dynamics, tire pressures, traffic events, lap sets and categories), so existing sessions survive — new columns stay `NULL` until re-imported.
+Opening a pre-v2 DB drops analysis tables (`sessions`, `laps`, `sectors`, `lap_traces`) and requires reimport. v2 → v12 are additive migrations (GPS, elapsed time, raw pedals, ABS, RPM, dynamics, tire pressures, traffic events, lap sets and categories, IBT weather/setup/ratings/lap aids), so existing sessions survive — new columns stay `NULL` until re-imported.
 
 ## Tables
 
@@ -14,6 +14,10 @@ Opening a pre-v2 DB drops analysis tables (`sessions`, `laps`, `sectors`, `lap_t
 | `track`, `car`, `session_date` | Metadata |
 | `lap_count`, `best_lap_ms` | Summary (best is pace-eligible; list/detail may refresh from cleaned laps) |
 | `imported_at` | ISO timestamp |
+| `weather_*`, `weather_skies` (v12) | WeekendInfo weather snapshot at IBT open |
+| `car_setup_yaml` (v12) | Full `CarSetup` YAML text |
+| `player_irating`, `player_lic_*`, `player_sr` (v12) | Player YAML iR / licence / SR (`LicSubLevel/100`) |
+| `incidents` (v12) | Final `PlayerCarMyIncidentCount` when published |
 
 `SessionSummary` also exposes a derived `session_type` (not a stored column): the `laps.session_type` of the highest `session_num` (latest stint) for that session, recomputed alongside `lap_count`/`best_lap_ms` whenever laps are loaded.
 
@@ -29,6 +33,11 @@ Opening a pre-v2 DB drops analysis tables (`sessions`, `laps`, `sectors`, `lap_t
 | `pace_eligible` | Derived: time + both `_OK` + full coverage (see [ANALYSIS.md](ANALYSIS.md)) |
 | `fuel_*`, `avg_speed`, tire temps | Optional aggregates |
 | `lf/rf/lr/rr_pressure` (v9) | Mean tire pressures (kPa) when the IBT publishes them |
+| `*_temp_l` / `*_temp_r` (v12) | Mean inner/outer tire temps (°C); mid temps unchanged |
+| `oil_temp`, `water_temp`, `voltage` (v12) | Lap means when published |
+| `brake_bias`, `abs_cut_pct` (v12) | `dcBrakeBias` / `BrakeABScutPct` means |
+| `tc_active` (v12) | Duty cycle of a dedicated TC-active channel only (never throttle raw−applied) |
+| `incidents` (v12) | End-of-lap `PlayerCarMyIncidentCount` |
 
 ### `sectors` / `lap_traces`
 

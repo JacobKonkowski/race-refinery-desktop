@@ -1,8 +1,8 @@
 //! SQLite storage. Persists [`AnalyzedSession`] products and serves read models.
 //!
-//! Schema is versioned via `PRAGMA user_version`. Current schema is **v11**.
+//! Schema is versioned via `PRAGMA user_version`. Current schema is **v12**.
 //! Versions older than 2 are wiped once (pre-v2 had incompatible lap taxonomy);
-//! upgrades from v2 onward use incremental migrations (v3 GPS … v11 lap sets).
+//! upgrades from v2 onward use incremental migrations (v3 GPS … v12 IBT collect).
 //! Full wipe remains available via the explicit `clear_database` debug command only.
 
 use anyhow::{Context, Result};
@@ -16,7 +16,7 @@ use race_refinery_analysis::{
 
 use super::models::*;
 
-const SCHEMA_VERSION: i64 = 11;
+const SCHEMA_VERSION: i64 = 12;
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS sessions (
@@ -28,7 +28,20 @@ CREATE TABLE IF NOT EXISTS sessions (
     session_date TEXT NOT NULL DEFAULT '',
     lap_count INTEGER NOT NULL DEFAULT 0,
     best_lap_ms REAL,
-    imported_at TEXT NOT NULL
+    imported_at TEXT NOT NULL,
+    weather_air_temp REAL,
+    weather_track_temp REAL,
+    weather_wind_vel REAL,
+    weather_wind_dir REAL,
+    weather_humidity REAL,
+    weather_precip REAL,
+    weather_skies TEXT,
+    car_setup_yaml TEXT,
+    player_irating INTEGER,
+    player_lic_string TEXT,
+    player_lic_level INTEGER,
+    player_sr REAL,
+    incidents INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS laps (
@@ -57,6 +70,21 @@ CREATE TABLE IF NOT EXISTS laps (
     rf_pressure REAL,
     lr_pressure REAL,
     rr_pressure REAL,
+    lf_temp_l REAL,
+    lf_temp_r REAL,
+    rf_temp_l REAL,
+    rf_temp_r REAL,
+    lr_temp_l REAL,
+    lr_temp_r REAL,
+    rr_temp_l REAL,
+    rr_temp_r REAL,
+    oil_temp REAL,
+    water_temp REAL,
+    voltage REAL,
+    brake_bias REAL,
+    abs_cut_pct REAL,
+    tc_active REAL,
+    incidents INTEGER,
     UNIQUE(session_id, session_num, lap_number)
 );
 
@@ -222,6 +250,45 @@ impl Database {
                 }
             }
             // v10 sparse traffic and v11 lap sets / categories (tables created by SCHEMA above).
+            // v12 IBT library collect: session weather/setup/ratings + lap aids/temps/incidents.
+            if version < 12 {
+                for (col, ty) in [
+                    ("weather_air_temp", "REAL"),
+                    ("weather_track_temp", "REAL"),
+                    ("weather_wind_vel", "REAL"),
+                    ("weather_wind_dir", "REAL"),
+                    ("weather_humidity", "REAL"),
+                    ("weather_precip", "REAL"),
+                    ("weather_skies", "TEXT"),
+                    ("car_setup_yaml", "TEXT"),
+                    ("player_irating", "INTEGER"),
+                    ("player_lic_string", "TEXT"),
+                    ("player_lic_level", "INTEGER"),
+                    ("player_sr", "REAL"),
+                    ("incidents", "INTEGER"),
+                ] {
+                    add_column_if_missing(conn, "sessions", col, ty)?;
+                }
+                for (col, ty) in [
+                    ("lf_temp_l", "REAL"),
+                    ("lf_temp_r", "REAL"),
+                    ("rf_temp_l", "REAL"),
+                    ("rf_temp_r", "REAL"),
+                    ("lr_temp_l", "REAL"),
+                    ("lr_temp_r", "REAL"),
+                    ("rr_temp_l", "REAL"),
+                    ("rr_temp_r", "REAL"),
+                    ("oil_temp", "REAL"),
+                    ("water_temp", "REAL"),
+                    ("voltage", "REAL"),
+                    ("brake_bias", "REAL"),
+                    ("abs_cut_pct", "REAL"),
+                    ("tc_active", "REAL"),
+                    ("incidents", "INTEGER"),
+                ] {
+                    add_column_if_missing(conn, "laps", col, ty)?;
+                }
+            }
             if version < SCHEMA_VERSION {
                 conn.execute_batch(&format!("PRAGMA user_version = {SCHEMA_VERSION};"))?;
             }
@@ -284,8 +351,12 @@ impl Database {
 
         let tx = self.conn.unchecked_transaction()?;
         tx.execute(
-            "INSERT INTO sessions (ibt_path, file_hash, track, car, session_date, lap_count, best_lap_ms, imported_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO sessions (
+                ibt_path, file_hash, track, car, session_date, lap_count, best_lap_ms, imported_at,
+                weather_air_temp, weather_track_temp, weather_wind_vel, weather_wind_dir,
+                weather_humidity, weather_precip, weather_skies, car_setup_yaml,
+                player_irating, player_lic_string, player_lic_level, player_sr, incidents
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21)",
             params![
                 ibt_path,
                 file_hash,
@@ -294,7 +365,20 @@ impl Database {
                 session.session_date,
                 lap_count,
                 best_lap_ms,
-                imported_at
+                imported_at,
+                session.weather.air_temp,
+                session.weather.track_temp,
+                session.weather.wind_vel,
+                session.weather.wind_dir,
+                session.weather.humidity,
+                session.weather.precip,
+                session.weather.skies,
+                session.car_setup_yaml,
+                session.player_rating.irating,
+                session.player_rating.lic_string,
+                session.player_rating.lic_level,
+                session.player_rating.sr,
+                session.incidents,
             ],
         )?;
         let session_id = tx.last_insert_rowid();
@@ -305,8 +389,15 @@ impl Database {
                 delta_best_ok, delta_session_best_ok, on_pit_road_start, on_pit_road_end,
                 lap_dist_pct_min, lap_dist_pct_max, pace_eligible,
                 fuel_start, fuel_used, avg_speed, lf_temp, rf_temp, lr_temp, rr_temp,
-                lf_pressure, rf_pressure, lr_pressure, rr_pressure
-             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24)",
+                lf_pressure, rf_pressure, lr_pressure, rr_pressure,
+                lf_temp_l, lf_temp_r, rf_temp_l, rf_temp_r,
+                lr_temp_l, lr_temp_r, rr_temp_l, rr_temp_r,
+                oil_temp, water_temp, voltage, brake_bias, abs_cut_pct, tc_active, incidents
+             ) VALUES (
+                ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16,
+                ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32,
+                ?33, ?34, ?35, ?36, ?37, ?38, ?39
+             )",
         )?;
         let mut sector_stmt =
             tx.prepare("INSERT INTO sectors (lap_id, sector_num, time_ms) VALUES (?1, ?2, ?3)")?;
@@ -346,6 +437,21 @@ impl Database {
                 lap.rf_pressure,
                 lap.lr_pressure,
                 lap.rr_pressure,
+                lap.lf_temp_l,
+                lap.lf_temp_r,
+                lap.rf_temp_l,
+                lap.rf_temp_r,
+                lap.lr_temp_l,
+                lap.lr_temp_r,
+                lap.rr_temp_l,
+                lap.rr_temp_r,
+                lap.oil_temp,
+                lap.water_temp,
+                lap.voltage,
+                lap.brake_bias,
+                lap.abs_cut_pct,
+                lap.tc_active,
+                lap.incidents,
             ])?;
             let lap_id = tx.last_insert_rowid();
 
@@ -424,7 +530,10 @@ impl Database {
     /// Sessions with the laps the explorer shows, after the same display cleanup as the list.
     pub fn list_library(&self) -> Result<Vec<LibrarySession>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, ibt_path, track, car, session_date, lap_count, best_lap_ms, imported_at
+            "SELECT id, ibt_path, track, car, session_date, lap_count, best_lap_ms, imported_at,
+                    weather_air_temp, weather_track_temp, weather_wind_vel, weather_wind_dir,
+                    weather_humidity, weather_precip, weather_skies, car_setup_yaml,
+                    player_irating, player_lic_string, player_lic_level, player_sr, incidents
              FROM sessions ORDER BY imported_at DESC",
         )?;
         let rows = stmt.query_map([], row_to_session_summary)?;
@@ -781,7 +890,10 @@ impl Database {
 
     fn get_session_summary(&self, session_id: i64) -> Result<Option<SessionSummary>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, ibt_path, track, car, session_date, lap_count, best_lap_ms, imported_at
+            "SELECT id, ibt_path, track, car, session_date, lap_count, best_lap_ms, imported_at,
+                    weather_air_temp, weather_track_temp, weather_wind_vel, weather_wind_dir,
+                    weather_humidity, weather_precip, weather_skies, car_setup_yaml,
+                    player_irating, player_lic_string, player_lic_level, player_sr, incidents
              FROM sessions WHERE id = ?1",
         )?;
         let mut rows = stmt.query(params![session_id])?;
@@ -797,7 +909,10 @@ impl Database {
                     delta_best_ok, delta_session_best_ok, on_pit_road_start, on_pit_road_end,
                     lap_dist_pct_min, lap_dist_pct_max, pace_eligible,
                     fuel_start, fuel_used, avg_speed, lf_temp, rf_temp, lr_temp, rr_temp,
-                    lf_pressure, rf_pressure, lr_pressure, rr_pressure
+                    lf_pressure, rf_pressure, lr_pressure, rr_pressure,
+                    lf_temp_l, lf_temp_r, rf_temp_l, rf_temp_r,
+                    lr_temp_l, lr_temp_r, rr_temp_l, rr_temp_r,
+                    oil_temp, water_temp, voltage, brake_bias, abs_cut_pct, tc_active, incidents
              FROM laps WHERE session_id = ?1 ORDER BY session_num, lap_number",
         )?;
         let rows = stmt.query_map(params![session_id], |row| {
@@ -826,6 +941,21 @@ impl Database {
                 rf_pressure: row.get(21)?,
                 lr_pressure: row.get(22)?,
                 rr_pressure: row.get(23)?,
+                lf_temp_l: row.get(24)?,
+                lf_temp_r: row.get(25)?,
+                rf_temp_l: row.get(26)?,
+                rf_temp_r: row.get(27)?,
+                lr_temp_l: row.get(28)?,
+                lr_temp_r: row.get(29)?,
+                rr_temp_l: row.get(30)?,
+                rr_temp_r: row.get(31)?,
+                oil_temp: row.get(32)?,
+                water_temp: row.get(33)?,
+                voltage: row.get(34)?,
+                brake_bias: row.get(35)?,
+                abs_cut_pct: row.get(36)?,
+                tc_active: row.get(37)?,
+                incidents: row.get(38)?,
                 has_traffic: false,
                 sectors: Vec::new(),
                 delta_to_best_ms: None,
@@ -1053,6 +1183,19 @@ fn row_to_session_summary(row: &rusqlite::Row) -> rusqlite::Result<SessionSummar
         best_lap_ms: row.get(6)?,
         imported_at: row.get(7)?,
         session_type: String::new(),
+        weather_air_temp: row.get(8)?,
+        weather_track_temp: row.get(9)?,
+        weather_wind_vel: row.get(10)?,
+        weather_wind_dir: row.get(11)?,
+        weather_humidity: row.get(12)?,
+        weather_precip: row.get(13)?,
+        weather_skies: row.get(14)?,
+        car_setup_yaml: row.get(15)?,
+        player_irating: row.get(16)?,
+        player_lic_string: row.get(17)?,
+        player_lic_level: row.get(18)?,
+        player_sr: row.get(19)?,
+        incidents: row.get(20)?,
     })
 }
 
@@ -1175,5 +1318,96 @@ mod tests {
         let matches = db.match_laps(&stored[0].rule).unwrap();
         assert_eq!(matches.len(), 1);
         assert!(matches[0].lap.pace_eligible);
+    }
+
+    #[test]
+    fn insert_session_persists_v12_collect_fields() {
+        use race_refinery_analysis::{
+            AnalyzedLap, AnalyzedSession, PlayerRatingSnapshot, WeatherSnapshot,
+        };
+
+        let db = Database::open_in_memory().unwrap();
+        let session = AnalyzedSession {
+            track: "Okayama".into(),
+            car: "GR86".into(),
+            session_date: "2026-11-11T00:00:00+00:00".into(),
+            weather: WeatherSnapshot {
+                air_temp: Some(20.5),
+                track_temp: Some(28.0),
+                wind_vel: Some(2.0),
+                wind_dir: Some(1.5),
+                humidity: Some(40.0),
+                precip: Some(0.0),
+                skies: Some("Clear".into()),
+            },
+            car_setup_yaml: Some("Update: null\n".into()),
+            player_rating: PlayerRatingSnapshot {
+                irating: Some(1500),
+                lic_string: Some("B 3.45".into()),
+                lic_level: Some(12),
+                sr: Some(3.45),
+            },
+            incidents: Some(4),
+            laps: vec![AnalyzedLap {
+                session_num: 0,
+                session_type: "Practice".into(),
+                iracing_lap: 1,
+                lap_number: 1,
+                lap_time_ms: Some(90_000.0),
+                delta_best_ok: Some(true),
+                delta_session_best_ok: Some(true),
+                on_pit_road_start: false,
+                on_pit_road_end: false,
+                lap_dist_pct_min: 0.0,
+                lap_dist_pct_max: 1.0,
+                fuel_start: Some(50.0),
+                fuel_used: Some(1.0),
+                avg_speed: Some(40.0),
+                lf_temp: Some(80.0),
+                rf_temp: Some(81.0),
+                lr_temp: Some(79.0),
+                rr_temp: Some(80.5),
+                lf_pressure: Some(140.0),
+                rf_pressure: None,
+                lr_pressure: None,
+                rr_pressure: None,
+                lf_temp_l: Some(78.0),
+                lf_temp_r: Some(82.0),
+                rf_temp_l: None,
+                rf_temp_r: None,
+                lr_temp_l: None,
+                lr_temp_r: None,
+                rr_temp_l: None,
+                rr_temp_r: None,
+                oil_temp: Some(95.0),
+                water_temp: Some(85.0),
+                voltage: Some(13.8),
+                brake_bias: Some(54.0),
+                abs_cut_pct: Some(10.0),
+                tc_active: None,
+                incidents: Some(2),
+                sectors: Vec::new(),
+                traces: Vec::new(),
+                traffic_events: Vec::new(),
+            }],
+            track_map: None,
+        };
+
+        let id = db
+            .insert_session("okayama.ibt", "hash-v12", &session)
+            .unwrap();
+        let detail = db.get_session(id).unwrap().unwrap();
+        assert_eq!(detail.session.weather_air_temp, Some(20.5));
+        assert_eq!(detail.session.weather_skies.as_deref(), Some("Clear"));
+        assert_eq!(detail.session.car_setup_yaml.as_deref(), Some("Update: null\n"));
+        assert_eq!(detail.session.player_irating, Some(1500));
+        assert_eq!(detail.session.player_sr, Some(3.45));
+        assert_eq!(detail.session.incidents, Some(4));
+        let lap = &detail.laps[0];
+        assert_eq!(lap.lf_temp_l, Some(78.0));
+        assert_eq!(lap.oil_temp, Some(95.0));
+        assert_eq!(lap.brake_bias, Some(54.0));
+        assert_eq!(lap.tc_active, None);
+        assert_eq!(lap.incidents, Some(2));
     }
 }

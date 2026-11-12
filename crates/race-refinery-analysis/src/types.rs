@@ -6,7 +6,9 @@
 
 use serde::{Deserialize, Serialize};
 
-pub use race_refinery_telemetry::{RawFrame, SectorBoundary, SessionMeta};
+pub use race_refinery_telemetry::{
+    PlayerRatingSnapshot, RawFrame, SectorBoundary, SessionMeta, WeatherSnapshot,
+};
 
 /// A downsampled telemetry point kept for charts and comparison.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -95,7 +97,7 @@ pub struct LapFrames {
 }
 
 /// A fully analyzed lap: SDK facts + computed products. No `valid`/`lap_kind`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct AnalyzedLap {
     pub session_num: i32,
     pub session_type: String,
@@ -124,6 +126,25 @@ pub struct AnalyzedLap {
     pub rf_pressure: Option<f64>,
     pub lr_pressure: Option<f64>,
     pub rr_pressure: Option<f64>,
+    /// Mean inner/outer tire temps (°C) when published.
+    pub lf_temp_l: Option<f64>,
+    pub lf_temp_r: Option<f64>,
+    pub rf_temp_l: Option<f64>,
+    pub rf_temp_r: Option<f64>,
+    pub lr_temp_l: Option<f64>,
+    pub lr_temp_r: Option<f64>,
+    pub rr_temp_l: Option<f64>,
+    pub rr_temp_r: Option<f64>,
+    /// Lap-mean engine / electrical channels when published.
+    pub oil_temp: Option<f64>,
+    pub water_temp: Option<f64>,
+    pub voltage: Option<f64>,
+    pub brake_bias: Option<f64>,
+    pub abs_cut_pct: Option<f64>,
+    /// Mean of a dedicated TC-active channel (0..1), or `None` when absent.
+    pub tc_active: Option<f64>,
+    /// `PlayerCarMyIncidentCount` on the last frame of the lap.
+    pub incidents: Option<i32>,
     /// `(sector_num, time_ms)` pairs.
     pub sectors: Vec<(i32, f64)>,
     pub traces: Vec<TracePoint>,
@@ -165,6 +186,11 @@ pub struct AnalyzedSession {
     pub track: String,
     pub car: String,
     pub session_date: String,
+    pub weather: WeatherSnapshot,
+    pub car_setup_yaml: Option<String>,
+    pub player_rating: PlayerRatingSnapshot,
+    /// Final `PlayerCarMyIncidentCount` from the last frame that carried it.
+    pub incidents: Option<i32>,
     pub laps: Vec<AnalyzedLap>,
     /// Circuit outline generated from this session's GPS samples, when the
     /// source carried `Lat` / `Lon` and one lap covered the track.
