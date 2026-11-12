@@ -4,6 +4,7 @@ import { hasRacingLine } from "../../shared/trackMap";
 import type { LapSummary, TracePoint, TrackOutline } from "../../shared/types";
 import { TrackMapWidget } from "../../widgets";
 import type { TrackMapMode } from "../../widgets";
+import { compareMode } from "./compareMode";
 
 interface Props {
   outline: TrackOutline | null;
@@ -17,9 +18,9 @@ interface Props {
 }
 
 /**
- * Track map for the selected session: pedal zones for the candidate lap, or the
- * two racing lines overlaid. Prefers Lines when both laps have GPS unless the
- * user pins a mode. Owns the trace fetch so the widget stays presentational.
+ * Track map for the selected session: pedal zones for the studied lap, or
+ * racing line(s) — one alone in solo mode, or candidate + reference overlaid.
+ * Prefers Lines when GPS is available unless the user pins a mode.
  */
 export function TrackMapPanel({
   outline,
@@ -33,6 +34,11 @@ export function TrackMapPanel({
   const [modePinned, setModePinned] = useState(false);
   const [traces, setTraces] = useState<Record<number, TracePoint[]>>({});
   const panelRef = useRef<HTMLDivElement>(null);
+
+  const solo = compareMode(candidate, reference) === "solo";
+  // Solo (ref only or Cand === Ref): one line — don't pass the same lap twice.
+  const lineCandidate = solo ? null : candidate;
+  const pedalLap = candidate ?? reference;
 
   // The corner table sits below the map; bring the map into view on focus.
   useEffect(() => {
@@ -48,7 +54,7 @@ export function TrackMapPanel({
   const referenceId = reference?.id ?? null;
 
   useEffect(() => {
-    const ids = [candidateId, referenceId].filter((id): id is number => id != null);
+    const ids = [...new Set([candidateId, referenceId].filter((id): id is number => id != null))];
     if (ids.length === 0) {
       setTraces({});
       return;
@@ -68,10 +74,16 @@ export function TrackMapPanel({
     };
   }, [candidateId, referenceId]);
 
-  const candidateTraces = candidateId == null ? null : traces[candidateId] ?? null;
   const referenceTraces = referenceId == null ? null : traces[referenceId] ?? null;
+  const lineCandidateId = lineCandidate?.id ?? null;
+  const lineCandidateTraces =
+    lineCandidateId == null ? null : traces[lineCandidateId] ?? null;
+  // Pedal mode needs a "studied" lap in the candidate slot; solo uses reference.
+  const pedalTraces =
+    pedalLap == null ? null : traces[pedalLap.id] ?? null;
+
   const linesAvailable =
-    hasRacingLine(outline, candidateTraces) && hasRacingLine(outline, referenceTraces);
+    hasRacingLine(outline, referenceTraces) || hasRacingLine(outline, lineCandidateTraces);
 
   useEffect(() => {
     if (modePinned) return;
@@ -82,6 +94,9 @@ export function TrackMapPanel({
     setModePinned(true);
     setMode(next);
   };
+
+  const widgetCandidateTraces = mode === "compare" ? lineCandidateTraces : pedalTraces;
+  const widgetReferenceTraces = mode === "compare" ? referenceTraces : null;
 
   return (
     <div className="panel" ref={panelRef}>
@@ -103,8 +118,10 @@ export function TrackMapPanel({
             disabled={!linesAvailable}
             title={
               linesAvailable
-                ? "Overlay candidate and reference racing lines"
-                : "Needs two laps with GPS — re-import this session's IBT"
+                ? solo || !lineCandidate
+                  ? "Show reference racing line"
+                  : "Overlay candidate and reference racing lines"
+                : "Needs a lap with GPS — re-import this session's IBT"
             }
           >
             Lines
@@ -115,8 +132,8 @@ export function TrackMapPanel({
         <div className="analyze-trackmap">
           <TrackMapWidget
             outline={outline}
-            candidateTraces={candidateTraces}
-            referenceTraces={referenceTraces}
+            candidateTraces={widgetCandidateTraces}
+            referenceTraces={widgetReferenceTraces}
             mode={mode}
             highlightPct={highlightPct}
             interactive
@@ -130,7 +147,12 @@ export function TrackMapPanel({
               <span className="swatch" style={{ background: "#ff6b6b" }} /> Brake
               <span className="swatch" style={{ background: "#5dffa8" }} /> Throttle
               <span className="swatch" style={{ background: "#ffb347" }} /> Coast
-              {candidate ? ` — Lap ${candidate.lapNumber}` : " — select a lap"}
+              {pedalLap ? ` — Lap ${pedalLap.lapNumber}` : " — select a lap"}
+            </>
+          ) : solo || !lineCandidate ? (
+            <>
+              <span className="swatch" style={{ background: "#d29922" }} /> Reference
+              {reference ? ` — Lap ${reference.lapNumber}` : null}
             </>
           ) : (
             <>

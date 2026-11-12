@@ -23,7 +23,7 @@ import type { LiveSnapshot, TrackOutline, TrailSample } from "../shared/types";
 /** Zoom multiplier per wheel notch (~100 px of `deltaY`). */
 const WHEEL_ZOOM_PER_NOTCH = 1.25;
 
-/** `pedal` colors one lap by throttle/brake; `compare` overlays two racing lines. */
+/** `pedal` colors one lap by throttle/brake; `compare` draws racing line(s). */
 export type TrackMapMode = "pedal" | "compare";
 
 interface Props {
@@ -136,16 +136,15 @@ function useLapGeometry(
     if (!outline) {
       return { segments: [], candidateLine: [], referenceLine: [], needsReimport: false };
     }
-    // Line compare needs real GPS on both laps; pedal zones work either way.
-    const canCompare =
-      mode === "compare" &&
-      hasRacingLine(outline, candidate) &&
-      hasRacingLine(outline, reference);
+    // Lines mode: draw every lap that has GPS (one alone, or both overlaid).
+    const candOk = hasRacingLine(outline, candidate);
+    const refOk = hasRacingLine(outline, reference);
+    const showLines = mode === "compare" && (candOk || refOk);
     return {
-      segments: canCompare || !candidate ? [] : pedalSegments(outline, candidate),
-      candidateLine: canCompare && candidate ? tracePath(outline, candidate) : [],
-      referenceLine: canCompare && reference ? tracePath(outline, reference) : [],
-      needsReimport: mode === "compare" && !canCompare && Boolean(candidate || reference),
+      segments: showLines || !candidate ? [] : pedalSegments(outline, candidate),
+      candidateLine: showLines && candOk && candidate ? tracePath(outline, candidate) : [],
+      referenceLine: showLines && refOk && reference ? tracePath(outline, reference) : [],
+      needsReimport: mode === "compare" && !showLines && Boolean(candidate || reference),
     };
   }, [outline, candidate, reference, mode]);
 }
