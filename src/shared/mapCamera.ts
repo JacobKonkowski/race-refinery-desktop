@@ -2,18 +2,24 @@
 import type { MapPoint } from "./trackMap";
 
 export interface MapCamera {
-  /** 1 = whole track fits; larger zooms in. */
+  /** 1 = unit box edge-to-edge; larger zooms in, smaller zooms out. */
   scale: number;
   /** View centre in unit-box coordinates. */
   cx: number;
   cy: number;
 }
 
-export const MIN_SCALE = 1;
+/** Furthest zoom-out: view is twice the unit box (room around strokes / lines). */
+export const MIN_SCALE = 0.5;
 export const MAX_SCALE = 6;
 /** Zoom level used when jumping to a corner. */
 export const FOCUS_SCALE = 3;
-export const FIT_CAMERA: MapCamera = { scale: 1, cx: 0.5, cy: 0.5 };
+/**
+ * Default / Reset view: slightly zoomed out so ribbon strokes and exaggerated
+ * racing lines aren't clipped by the interactive map's overflow:hidden frame.
+ */
+export const FIT_SCALE = 0.75;
+export const FIT_CAMERA: MapCamera = { scale: FIT_SCALE, cx: 0.5, cy: 0.5 };
 
 /** Screen rectangle of the `<svg>` element (a `DOMRect` fits). */
 export interface ScreenRect {
@@ -30,11 +36,14 @@ export function isFit(c: MapCamera): boolean {
 /**
  * Clamp zoom to [`MIN_SCALE`, `MAX_SCALE`] and keep the view centre within
  * half a view of the unit box, so the track can't be dragged off-screen.
+ * When the view is larger than the unit box, pin the centre.
  */
 export function clampCamera(c: MapCamera): MapCamera {
   const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, c.scale));
-  const quarter = 0.25 / scale;
-  const clamp = (v: number) => Math.min(1 - quarter, Math.max(quarter, v));
+  const margin = 0.25 / scale;
+  const lo = margin;
+  const hi = 1 - margin;
+  const clamp = (v: number) => (lo >= hi ? 0.5 : Math.min(hi, Math.max(lo, v)));
   return { scale, cx: clamp(c.cx), cy: clamp(c.cy) };
 }
 
