@@ -17,7 +17,7 @@ Race Refinery exposes features via `src/features/registry.ts`: **Lap Library**, 
 |------------|--------|
 | Workspace only | No library sidebar. Empty until Lap Library opens a session/lap. Header / empty CTA: **Change in Lap Library** / **Open Lap Library** |
 | Workspace | Session workspace (one outing: compare + map + insights + fuel). Lap picker below (optional Pace-only) |
-| Lap table | Shows all loaded laps by default; session type grouping; sectors; `paceEligible`; optional tire columns; traffic tags |
+| Lap table | Shows all loaded laps by default; session type grouping; sectors; `paceEligible`; optional tire columns; traffic tags. **Δ Best** text is banded by % of best × session type (Practice/Qualy/TT/Other: green ≤0.2%, yellow ≤0.5%; Race 2× those cutoffs; constants, not user-defined) |
 | Compare | Distance-aligned traces with **trace toggles** (Δ, speed, pedals, gear, RPM, clutch, steering, lat/long G, yaw). Corner table shows each lap’s absolute time through the corner plus Δ vs reference (+ = slower); expand a row for technique. Brake chart shades ABS from the sim channel. |
 | Re-import | Session header re-analyzes the outing’s IBT still on disk (`reimport_session_cmd`) |
 | Fuel / tires | Fuel use, tire temps, and pressures (secondary section). Hidden unless the open workspace is one whole session |
