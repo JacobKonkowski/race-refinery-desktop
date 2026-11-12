@@ -47,7 +47,7 @@ race-refinery-monitor = { path = "../crates/race-refinery-monitor" }
 race-refinery-input = { path = "../crates/race-refinery-input" }
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.58", features = [
+windows = { version = "0.62", features = [
     "Win32_Foundation",
     "Win32_System_Memory",
     "Win32_System_Registry",
