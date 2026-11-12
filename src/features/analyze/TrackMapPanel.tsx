@@ -101,7 +101,7 @@ export function TrackMapPanel({
   return (
     <div className="panel" ref={panelRef}>
       <div className="panel-header">
-        <h2>Track map</h2>
+        <h2>Track Map</h2>
         <span className="muted">{track}</span>
         <div className="btn-row" style={{ marginLeft: "auto" }}>
           <button
@@ -147,12 +147,12 @@ export function TrackMapPanel({
               <span className="swatch" style={{ background: "#ff6b6b" }} /> Brake
               <span className="swatch" style={{ background: "#5dffa8" }} /> Throttle
               <span className="swatch" style={{ background: "#ffb347" }} /> Coast
-              {pedalLap ? ` — Lap ${pedalLap.lapNumber}` : " — select a lap"}
+              {pedalLap ? ` — L ${pedalLap.lapNumber}` : " — select a lap"}
             </>
           ) : solo || !lineCandidate ? (
             <>
               <span className="swatch" style={{ background: "#d29922" }} /> Reference
-              {reference ? ` — Lap ${reference.lapNumber}` : null}
+              {reference ? ` — L ${reference.lapNumber}` : null}
             </>
           ) : (
             <>

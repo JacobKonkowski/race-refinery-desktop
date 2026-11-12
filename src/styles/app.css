@@ -135,41 +135,52 @@
   color: var(--color-slow);
 }
 
-/* --- Analyze workspace layout --- */
-.analyze {
-  display: grid;
-  grid-template-columns: 320px 1fr;
+/* --- Lap Library + Analyze workspace layout --- */
+.lap-library {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 0;
 }
-
-.session-sidebar {
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid var(--color-border);
-  background: var(--color-surface);
+.library-master-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(240px, 3fr);
+  flex: 1;
   min-height: 0;
 }
-.session-sidebar .sidebar-search {
+.library-session-table {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.library-table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   padding: 10px;
   border-bottom: 1px solid var(--color-border);
 }
-.session-sidebar .sidebar-search-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 8px;
-}
-.session-sidebar .sidebar-search-controls select {
+.library-table-toolbar input[type="search"],
+.library-table-toolbar select {
   background: var(--color-bg);
   border: 1px solid var(--color-border-strong);
-  color: var(--color-text);
   border-radius: var(--radius-sm);
-  padding: 5px 6px;
-  font-size: 12px;
+  color: var(--color-text);
+  padding: 7px 10px;
+  font-size: 13px;
 }
-.session-sidebar .sidebar-hide-empty {
+.library-table-toolbar input[type="search"] {
+  min-width: 160px;
+  flex: 1 1 160px;
+}
+.library-table-toolbar select {
+  max-width: 180px;
+}
+.library-table-hide-empty {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -178,11 +189,221 @@
   white-space: nowrap;
   cursor: pointer;
 }
-.session-sidebar .sidebar-hide-empty input[type="checkbox"] {
+.library-table-hide-empty input[type="checkbox"] {
   width: auto;
   cursor: pointer;
 }
-.session-sidebar input {
+.library-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+.library-table-scroll {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+.library-sessions-data {
+  width: 100%;
+}
+.library-sessions-data tbody tr:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+.library-sort {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+.library-sort:hover {
+  color: var(--color-text);
+}
+.library-col-actions {
+  width: 36px;
+  text-align: right;
+  padding-right: 8px;
+}
+.library-row-delete {
+  padding: 0 6px;
+  min-width: 0;
+  opacity: 0;
+}
+.library-sessions-data tbody tr:hover .library-row-delete,
+.library-row-delete:focus {
+  opacity: 1;
+}
+.library-detail-column {
+  overflow: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.library-detail {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.library-detail-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+.library-detail-title h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.library-detail-title p {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+.library-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.library-detail-empty {
+  margin: 0;
+  padding: 20px 14px;
+  font-size: 13px;
+}
+.library-lap-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+.library-lap-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border-top: 1px solid var(--color-border);
+}
+.library-lap-row:first-child {
+  border-top: 0;
+}
+.library-lap-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 8px 14px;
+}
+.library-lap-label:hover {
+  background: var(--color-surface-hover);
+}
+.library-lap-num {
+  width: 36px;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 600;
+}
+.library-lap-time {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.library-workspace {
+  overflow: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+.library-workspace-empty {
+  flex: 1;
+  justify-content: center;
+}
+.change-library-link {
+  margin-left: auto;
+  align-self: flex-start;
+}
+
+.analyze {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: 100%;
+  min-height: 0;
+}
+.analyze.analyze-solo {
+  grid-template-columns: 1fr;
+}
+
+.session-sidebar,
+.library-master {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+  min-height: 0;
+}
+.session-sidebar .sidebar-search,
+.library-master .sidebar-search {
+  padding: 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+.session-sidebar .sidebar-search-controls,
+.library-master .sidebar-search-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+.session-sidebar .sidebar-search-controls select,
+.library-master .sidebar-search-controls select {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  padding: 5px 6px;
+  font-size: 12px;
+}
+.session-sidebar .sidebar-hide-empty,
+.library-master .sidebar-hide-empty {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.session-sidebar .sidebar-hide-empty input[type="checkbox"],
+.library-master .sidebar-hide-empty input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+}
+.session-sidebar input,
+.library-master input[type="search"] {
   width: 100%;
   background: var(--color-bg);
   border: 1px solid var(--color-border-strong);
@@ -408,26 +629,31 @@
   text-overflow: ellipsis;
 }
 .session-item .si-type,
-.explorer-label .si-type {
+.explorer-label .si-type,
+.library-sessions-data .si-type {
   flex-shrink: 0;
   color: var(--color-text-faint);
   font-size: 11px;
   font-weight: 700;
 }
 .session-item .si-type-R,
-.explorer-label .si-type-R {
+.explorer-label .si-type-R,
+.library-sessions-data .si-type-R {
   color: #e5484d;
 }
 .session-item .si-type-Q,
-.explorer-label .si-type-Q {
+.explorer-label .si-type-Q,
+.library-sessions-data .si-type-Q {
   color: #a855f7;
 }
 .session-item .si-type-P,
-.explorer-label .si-type-P {
+.explorer-label .si-type-P,
+.library-sessions-data .si-type-P {
   color: #46a758;
 }
 .session-item .si-type-T,
-.explorer-label .si-type-T {
+.explorer-label .si-type-T,
+.library-sessions-data .si-type-T {
   color: #e6b800;
 }
 .session-item .si-car {
@@ -502,14 +728,44 @@
 .analyze-map-cell {
   position: sticky;
   top: 0;
-  align-self: start;
+  min-height: 0;
   max-height: min(62vh, 720px);
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
 }
 
-.analyze-map-cell .analyze-trackmap,
-.analyze-map-cell .panel {
-  height: 100%;
+/* Stretch panel → body → map so the map fills the row beside Compare. */
+.analyze-map-cell > .panel,
+.analyze-map-cell .panel-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.analyze-map-cell .analyze-trackmap {
+  flex: 1;
+  min-height: 340px;
+  height: auto;
+  display: flex;
+}
+
+.analyze-map-cell .analyze-trackmap > .pw-trackmap {
+  flex: 1;
+  height: auto;
+}
+
+/* Keep Pedals | Lines on one row in the narrow map column. */
+.analyze-map-cell .panel-header > .muted {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analyze-map-cell .panel-header .btn-row {
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .analyze-lap-picker .panel-header {

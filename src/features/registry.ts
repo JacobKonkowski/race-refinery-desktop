@@ -8,6 +8,7 @@
  */
 import type { ComponentType, ReactNode } from "react";
 import { analyzeFeature } from "./analyze";
+import { libraryFeature } from "./library";
 import { liveFeature } from "./live";
 import { settingsFeature } from "./settings";
 import { voiceStudioFeature } from "./voice-studio";
@@ -23,6 +24,7 @@ export interface Feature {
 }
 
 export const features: Feature[] = [
+  libraryFeature,
   analyzeFeature,
   liveFeature,
   voiceStudioFeature,
