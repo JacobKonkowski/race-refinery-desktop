@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { SessionSummary } from "../../shared/types";
 import { formatDate, formatLapTime } from "../../shared/format";
 import type { SessionStats } from "./sessionStats";
@@ -9,9 +10,17 @@ interface Props {
   sessionTypes: string[];
   onReimport: () => void;
   reimporting: boolean;
+  trailing?: ReactNode;
 }
 
-export function SessionHeader({ session, stats, sessionTypes, onReimport, reimporting }: Props) {
+export function SessionHeader({
+  session,
+  stats,
+  sessionTypes,
+  onReimport,
+  reimporting,
+  trailing,
+}: Props) {
   const consistency =
     stats.consistencyMs == null
       ? "—"
@@ -53,6 +62,7 @@ export function SessionHeader({ session, stats, sessionTypes, onReimport, reimpo
         />
         <Fact label="Consistency" value={consistency} />
       </div>
+      {trailing}
     </div>
   );
 }
