@@ -6,7 +6,7 @@ dependency table and contributor playbook.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  React shell + features (Analyze | Live | Voice Studio | Settings) │
+│  React shell + features (Lap Library | Analyze | Live | Voice | Settings) │
 │  widgets catalog → monitor windows + VR HUD             │
 └─────────────┬───────────────────────────┬───────────────┘
               │ invoke / events           │
@@ -23,7 +23,7 @@ dependency table and contributor playbook.
 | Path | Role |
 |------|------|
 | `src/shell/` | AppShell, feature nav |
-| `src/features/registry.ts` | Analyze, Live, Voice Studio, Settings |
+| `src/features/registry.ts` | Lap Library, Analyze, Live, Voice Studio, Settings |
 | `src/features/analyze/` | Post-session UI |
 | `src/features/live/` | Live / coach / monitor / VR controls |
 | `src/features/voice-studio/` | Record and preview coach voice packs |

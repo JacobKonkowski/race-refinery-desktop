@@ -17,10 +17,20 @@ interface Props {
   paceOnly?: boolean;
   /** Show tire temperature columns (secondary density). */
   showTireTemps?: boolean;
+  /** Group by outing (a saved set) instead of sub-session, and show date, car, and type. */
+  groupLabel?: (lap: LapSummary) => {
+    key: string;
+    label: string;
+    date: string;
+    car: string;
+    sessionType: string;
+  };
+  /** Column title for the delta. A set uses the fastest pace-eligible lap in the set. */
+  deltaHeading?: string;
 }
 
 interface Group {
-  sessionNum: number;
+  key: string;
   sessionType: string;
   laps: LapSummary[];
 }
@@ -28,9 +38,27 @@ interface Group {
 function groupBySubsession(laps: LapSummary[]): Group[] {
   const groups: Group[] = [];
   for (const lap of laps) {
-    let group = groups.find((g) => g.sessionNum === lap.sessionNum);
+    const key = String(lap.sessionNum);
+    let group = groups.find((g) => g.key === key);
     if (!group) {
-      group = { sessionNum: lap.sessionNum, sessionType: lap.sessionType, laps: [] };
+      group = { key, sessionType: lap.sessionType, laps: [] };
+      groups.push(group);
+    }
+    group.laps.push(lap);
+  }
+  return groups;
+}
+
+function groupByLabel(
+  laps: LapSummary[],
+  groupLabel: (lap: LapSummary) => { key: string; label: string },
+): Group[] {
+  const groups: Group[] = [];
+  for (const lap of laps) {
+    const { key, label } = groupLabel(lap);
+    let group = groups.find((g) => g.key === key);
+    if (!group) {
+      group = { key, sessionType: label, laps: [] };
       groups.push(group);
     }
     group.laps.push(lap);
@@ -131,6 +159,8 @@ export function LapTable({
   onSelectReference,
   paceOnly = false,
   showTireTemps = false,
+  groupLabel,
+  deltaHeading = "Δ Best",
 }: Props) {
   const visibleLaps = useMemo(() => {
     if (!paceOnly) return laps;
@@ -140,23 +170,43 @@ export function LapTable({
     );
   }, [laps, paceOnly, candidateLapId, referenceLapId]);
 
-  const groups = useMemo(() => groupBySubsession(visibleLaps), [visibleLaps]);
+  const groups = useMemo(
+    () => (groupLabel ? groupByLabel(visibleLaps, groupLabel) : groupBySubsession(visibleLaps)),
+    [visibleLaps, groupLabel],
+  );
   const maxSector = useMemo(
     () => visibleLaps.reduce((m, l) => Math.max(m, ...l.sectors.map((s) => s.sectorNum), 0), 0),
     [visibleLaps],
   );
   const sectorNums = Array.from({ length: maxSector }, (_, i) => i + 1);
-  // Lap, Time, Δ Best, sectors…, OK, Pit, Fuel[, temps]
-  const colSpan = 3 + sectorNums.length + 2 + 1 + (showTireTemps ? 4 : 0);
+  const outingCols = groupLabel ? 3 : 0;
+  // [Date, Car, Type,] Lap, Time, Δ Best, sectors…, OK, Pit, Fuel[, temps]
+  const colSpan = outingCols + 3 + sectorNums.length + 2 + 1 + (showTireTemps ? 4 : 0);
 
   return (
     <div className="table-scroll">
       <table className="data-table">
         <thead>
           <tr>
+            {groupLabel ? (
+              <>
+                <th>Date</th>
+                <th>Car</th>
+                <th>Type</th>
+              </>
+            ) : null}
             <th>Lap</th>
             <th className="num">Time</th>
-            <th className="num">Δ Best</th>
+            <th
+              className="num"
+              title={
+                deltaHeading === "Δ Best"
+                  ? undefined
+                  : "Versus the fastest pace-eligible lap in this set"
+              }
+            >
+              {deltaHeading}
+            </th>
             {sectorNums.map((n) => (
               <th key={n} className="num">
                 S{n}
@@ -180,8 +230,8 @@ export function LapTable({
             const best = bestSectors(group.laps);
             const deltaScale = paceDeltaScale(group.laps);
             return (
-              <Fragment key={group.sessionNum}>
-                {groups.length > 1 ? (
+              <Fragment key={group.key}>
+                {!groupLabel && groups.length > 1 ? (
                   <tr className="subsession-row">
                     <td colSpan={colSpan}>{group.sessionType}</td>
                   </tr>
@@ -194,6 +244,7 @@ export function LapTable({
                     .filter(Boolean)
                     .join(" ");
                   const sectorByNum = new Map(lap.sectors.map((s) => [s.sectorNum, s.timeMs]));
+                  const outing = groupLabel?.(lap);
                   return (
                     <tr
                       key={lap.id}
@@ -212,6 +263,13 @@ export function LapTable({
                         onSelectReference(lap.id);
                       }}
                     >
+                      {outing ? (
+                        <>
+                          <td>{outing.date}</td>
+                          <td>{outing.car}</td>
+                          <td>{outing.sessionType}</td>
+                        </>
+                      ) : null}
                       <td>
                         <span className="lap-num-cell">
                           {lap.lapNumber}

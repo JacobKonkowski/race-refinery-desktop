@@ -1,20 +1,28 @@
 # Features
 
-Race Refinery exposes features via `src/features/registry.ts`: **Analyze**, **Live**, **Voice Studio**, and **Settings**.
+Race Refinery exposes features via `src/features/registry.ts`: **Lap Library**, **Analyze**, **Live**, **Voice Studio**, and **Settings**.
+
+## Lap Library
+
+| Capability | Notes |
+|------------|--------|
+| Session table | ~70% sortable/filterable session table (date, track, car, type, lap count, best pace) + ~30% focused lap list. Search, column filters, hide-no-pace-eligible. No Sets chrome, draft bag, or membership checkboxes on this tab |
+| Open flow B | Session **Open in Analyze** or lap row click opens that outing in Analyze |
+| Sets | Deferred to a separate tab later (tables/API remain) |
+| Import | File / folder pickers; folder watcher auto-import |
 
 ## Analyze
 
 | Capability | Notes |
 |------------|--------|
-| Session browser | Lists imported IBTs; search by track/car/date; sort by date/car/track; hides no-pace-eligible sessions by default (checkbox to show them); shows a color-coded session-type letter (R/Q/P/T) per session; delete per session |
-| Import | File / folder pickers; folder watcher auto-import |
-| Config tip | Reminds when disk recording looks disabled |
-| Workspace | Compare + track map as the hero row; lap picker below (all laps by default; optional Pace-only filter); Fuel/tires collapsed |
+| Workspace only | No library sidebar. Empty until Lap Library opens a session/lap. Header / empty CTA: **Change in Lap Library** / **Open Lap Library** |
+| Workspace | Session workspace (one outing: compare + map + insights + fuel). Lap picker below (optional Pace-only) |
 | Lap table | Shows all loaded laps by default; session type grouping; sectors; `paceEligible`; optional tire columns; traffic tags |
 | Compare | Distance-aligned traces with **trace toggles** (Δ, speed, pedals, gear, RPM, clutch, steering, lat/long G, yaw). Corner table shows each lap’s absolute time through the corner plus Δ vs reference (+ = slower); expand a row for technique. Brake chart shades ABS from the sim channel. |
-| Re-import | Session header / sidebar buttons re-analyze IBTs still on disk with the latest pipeline (`reimport_session_cmd`) |
-| Fuel / tires | Fuel use, tire temps, and pressures (secondary section) |
-| Insights | Session insights strip (stdev, sector gap, fuel vs median) |
+| Re-import | Session header re-analyzes the outing’s IBT still on disk (`reimport_session_cmd`) |
+| Fuel / tires | Fuel use, tire temps, and pressures (secondary section). Hidden unless the open workspace is one whole session |
+| Insights | Session insights strip (stdev, sector gap, fuel vs median). Hidden unless the open workspace is one whole session |
+| Filters | Backend categories (`lap_categories` / `match_laps`) remain; Lap Library filter authoring is not in this cut |
 
 Phantom reset buckets and sticky duplicate lap times are cleaned in the analysis pipeline (and when loading older sessions). See [ANALYSIS.md](ANALYSIS.md).
 
@@ -23,7 +31,7 @@ Phantom reset buckets and sticky duplicate lap times are cleaned in the analysis
 Clicking a corner row expands a detail panel:
 
 - **Technique** — for candidate and reference: ABS time, peak brake, trail-braking time, coasting time, and apex-to-full-throttle time (definitions in [ANALYSIS.md](ANALYSIS.md#corner-technique)).
-- **Brake-point consistency** — a scatter of every complete, non-pit lap in the reference's sub-session: brake point relative to the reference (metres) against time through the corner. Candidate and reference are highlighted, and the header shows the spread. It shows how brake point and corner time vary together across clean laps, not that a later brake caused the time. Laps that lost over 3 s (spins, offs) are hidden and counted.
+- **Brake-point consistency** — a scatter of every complete, non-pit lap in the reference's sub-session: brake point relative to the reference (metres) against time through the corner. Candidate and reference are highlighted, and the header shows the spread. It shows how brake point and corner time vary together across clean laps, not that a later brake caused the time. Laps that lost over 3 s (spins, offs) are hidden and counted. A selection that is not one whole session uses every complete off-pit lap in that selection, including laps from other sub-sessions on that track.
 
 The Compare brake chart shades where **ABS** was active (`BrakeABSactive`), in each lap's color. Hovering a shaded stretch names it in the tooltip. ABS needs a session imported under schema v6; re-import older sessions for assist data. Cars without ABS show zero.
 

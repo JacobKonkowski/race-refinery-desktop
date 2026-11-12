@@ -27,8 +27,9 @@ use crate::live::{LiveService, LiveSnapshot, LiveStatus, PostSessionImportFn};
 use crate::monitor::MonitorOverlayService;
 use crate::settings::{load_settings, save_settings, AppSettings, ControllerBinding};
 use crate::storage::{
-    load_track_map, Database, ImportStatus, IracingConfigCheck, LapTrace, SessionDetail,
-    SessionSummary,
+    load_track_map, CategoryMatch, CategoryRule, Database, ImportStatus, IracingConfigCheck,
+    LapCategory, LapSetDetail, LapSetSummary, LapTrace, LibrarySession, SessionDetail,
+    SessionSummary, SetLap,
 };
 use crate::vr::{NativeVrStatus, VrLayerDiagnostics, VrOverlayService, VrOverlayStatus};
 
@@ -91,6 +92,129 @@ pub fn get_session(
         .db
         .lock()
         .get_session(session_id)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_library(state: State<'_, Arc<AppState>>) -> Result<Vec<LibrarySession>, String> {
+    state
+        .import
+        .db
+        .lock()
+        .list_library()
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_lap_sets(state: State<'_, Arc<AppState>>) -> Result<Vec<LapSetSummary>, String> {
+    state
+        .import
+        .db
+        .lock()
+        .list_lap_sets()
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_lap_set(
+    state: State<'_, Arc<AppState>>,
+    set_id: i64,
+) -> Result<Option<LapSetDetail>, String> {
+    state
+        .import
+        .db
+        .lock()
+        .get_lap_set(set_id)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn load_laps(
+    state: State<'_, Arc<AppState>>,
+    lap_ids: Vec<i64>,
+) -> Result<Vec<SetLap>, String> {
+    state
+        .import
+        .db
+        .lock()
+        .load_laps(&lap_ids)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn save_lap_set(
+    state: State<'_, Arc<AppState>>,
+    id: Option<i64>,
+    name: String,
+    track: String,
+    lap_ids: Vec<i64>,
+) -> Result<i64, String> {
+    state
+        .import
+        .db
+        .lock()
+        .save_lap_set(id, &name, &track, &lap_ids)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_lap_set(state: State<'_, Arc<AppState>>, set_id: i64) -> Result<bool, String> {
+    state
+        .import
+        .db
+        .lock()
+        .delete_lap_set(set_id)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_lap_categories(state: State<'_, Arc<AppState>>) -> Result<Vec<LapCategory>, String> {
+    state
+        .import
+        .db
+        .lock()
+        .list_lap_categories()
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn save_lap_category(
+    state: State<'_, Arc<AppState>>,
+    id: Option<i64>,
+    name: String,
+    rule: CategoryRule,
+) -> Result<i64, String> {
+    state
+        .import
+        .db
+        .lock()
+        .save_lap_category(id, &name, &rule)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_lap_category(
+    state: State<'_, Arc<AppState>>,
+    category_id: i64,
+) -> Result<bool, String> {
+    state
+        .import
+        .db
+        .lock()
+        .delete_lap_category(category_id)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn match_laps(
+    state: State<'_, Arc<AppState>>,
+    rule: CategoryRule,
+) -> Result<Vec<CategoryMatch>, String> {
+    state
+        .import
+        .db
+        .lock()
+        .match_laps(&rule)
         .map_err(|e| e.to_string())
 }
 

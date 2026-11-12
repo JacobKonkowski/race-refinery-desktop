@@ -18,9 +18,10 @@ import type {
   LapComparison,
   LapSummary,
 } from "../../shared/types";
-import { deltaClass, formatDelta, formatLapTime } from "../../shared/format";
+import { deltaClass, formatDelta, formatLapTime, formatSpeedKph } from "../../shared/format";
 import { CornerTable } from "./CornerTable";
 import { CAND_COLOR, DELTA_COLOR, REF_COLOR } from "./compareColors";
+import { compareMode } from "./compareMode";
 import {
   defaultTraceVisibility,
   TRACE_TOGGLES,
@@ -39,6 +40,8 @@ interface Props {
   onHoverDistPct?: (pct: number | null) => void;
   /** Corner row click: zoom the track map to that lap fraction. */
   onFocusDistPct?: (pct: number) => void;
+  /** Saved sets scatter every complete off-pit lap, not one sub-session. */
+  sameSubsession?: boolean;
 }
 
 const ASSIST_NAMES: Record<AssistKind, string> = {
@@ -78,30 +81,38 @@ export function ComparePanel({
   onChangeReference,
   onHoverDistPct,
   onFocusDistPct,
+  sameSubsession = true,
 }: Props) {
   const [comparison, setComparison] = useState<LapComparison | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(defaultTraceVisibility);
 
-  const canCompare = candidate && reference && candidate.id !== reference.id;
+  const mode = compareMode(candidate, reference);
+  /** One lap to inspect (ref only, or Cand === Ref) — graphs/timings alone. */
+  const soloReference = mode === "solo";
+  const canCompare = mode === "compare";
+  const showTraces = soloReference || canCompare;
 
   useEffect(() => {
-    if (!canCompare) {
+    if (!showTraces || !reference) {
       setComparison(null);
       return;
     }
     let cancelled = false;
     setLoading(true);
     setError(null);
-    compareLaps(candidate!.id, reference!.id)
+    // Solo reuses compare_laps(ref, ref) so charts/corners share one pipeline;
+    // the UI below drops candidate/delta overlays.
+    const candidateId = canCompare && candidate ? candidate.id : reference.id;
+    compareLaps(candidateId, reference.id)
       .then((c) => !cancelled && setComparison(c))
       .catch((e) => !cancelled && setError(String(e)))
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [canCompare, candidate, reference]);
+  }, [showTraces, canCompare, candidate, reference]);
 
   const chartData = useMemo(() => {
     if (!comparison) return [];
@@ -133,23 +144,44 @@ export function ComparePanel({
     }));
   }, [comparison]);
 
-  const absBands = useMemo(() => assistBands(comparison?.assists ?? [], "abs"), [comparison]);
+  const absBands = useMemo(() => {
+    const spans = comparison?.assists ?? [];
+    const filtered = soloReference ? spans.filter((s) => s.lap === "reference") : spans;
+    return assistBands(filtered, "abs");
+  }, [comparison, soloReference]);
 
   const trafficMarkers = useMemo(() => {
-    const cand = (comparison?.candidateTraffic ?? []).map((t) => ({
-      pct: t.distPct,
-      role: "candidate" as const,
-    }));
     const refr = (comparison?.referenceTraffic ?? []).map((t) => ({
       pct: t.distPct,
       role: "reference" as const,
     }));
+    if (soloReference) return refr;
+    const cand = (comparison?.candidateTraffic ?? []).map((t) => ({
+      pct: t.distPct,
+      role: "candidate" as const,
+    }));
     return [...cand, ...refr];
-  }, [comparison]);
+  }, [comparison, soloReference]);
 
   const show = (key: TraceToggleKey) => visible[key];
   const toggle = (key: TraceToggleKey) =>
     setVisible((v) => ({ ...v, [key]: !v[key] }));
+
+  const channelToggles = soloReference
+    ? TRACE_TOGGLES.filter((t) => t.key !== "delta")
+    : TRACE_TOGGLES;
+
+  const pairLines = (
+    candKey: string,
+    refKey: string,
+    opts?: { step?: boolean },
+  ): ChartLine[] =>
+    soloReference
+      ? [{ key: refKey, color: REF_COLOR, ...opts }]
+      : [
+          { key: candKey, color: CAND_COLOR, ...opts },
+          { key: refKey, color: REF_COLOR, ...opts },
+        ];
 
   return (
     <div className="panel compare-panel">
@@ -175,20 +207,22 @@ export function ComparePanel({
       </div>
 
       <div className="panel-body compare-scroll">
-        {!candidate ? (
-          <p className="muted">Select a lap below to compare it against the reference.</p>
-        ) : !reference ? (
-          <p className="muted">Pick a reference lap to compare against.</p>
-        ) : candidate.id === reference.id ? (
-          <p className="muted">Candidate and reference are the same lap. Pick another lap.</p>
+        {!reference ? (
+          <p className="muted">
+            {candidate
+              ? "Pick a reference lap to compare against."
+              : "Pick a reference lap to inspect, or select a lap below to compare."}
+          </p>
         ) : loading ? (
-          <p className="muted">Comparing…</p>
+          <p className="muted">{soloReference ? "Loading reference…" : "Comparing…"}</p>
         ) : error ? (
-          <p className="slow">Compare failed: {error}</p>
-        ) : comparison ? (
+          <p className="slow">{soloReference ? "Failed to load reference: " : "Compare failed: "}
+            {error}
+          </p>
+        ) : comparison && reference ? (
           <>
             <div className="trace-toggles" role="group" aria-label="Chart channels">
-              {TRACE_TOGGLES.map((t) => (
+              {channelToggles.map((t) => (
                 <button
                   key={t.key}
                   type="button"
@@ -203,39 +237,64 @@ export function ComparePanel({
             </div>
 
             <div className="legend">
-              <span>
-                <span className="swatch" style={{ background: CAND_COLOR }} />
-                Candidate — Lap {candidate.lapNumber}
-                {candidate.hasTraffic ? " · traffic" : ""}
-              </span>
+              {candidate && !soloReference ? (
+                <span>
+                  <span className="swatch" style={{ background: CAND_COLOR }} />
+                  Candidate — Lap {candidate.lapNumber}
+                  {candidate.hasTraffic ? " · traffic" : ""}
+                </span>
+              ) : null}
               <span>
                 <span className="swatch" style={{ background: REF_COLOR }} />
                 Reference — Lap {reference.lapNumber}
                 {reference.hasTraffic ? " · traffic" : ""}
               </span>
-              <span>
-                <span className="swatch" style={{ background: DELTA_COLOR }} />
-                Time gain/loss
-              </span>
+              {!soloReference ? (
+                <span>
+                  <span className="swatch" style={{ background: DELTA_COLOR }} />
+                  Time gain/loss
+                </span>
+              ) : (
+                <span className="muted">Select a lap below to overlay a comparison.</span>
+              )}
             </div>
 
             <div className="compare-summary">
-              <Fact label="Candidate" value={formatLapTime(comparison.candidateTimeMs)} />
+              {candidate && !soloReference ? (
+                <Fact label="Candidate" value={formatLapTime(comparison.candidateTimeMs)} />
+              ) : null}
               <Fact label="Reference" value={formatLapTime(comparison.referenceTimeMs)} />
-              <Fact
-                label="Delta"
-                value={formatDelta(comparison.deltaMs)}
-                className={deltaClass(comparison.deltaMs)}
-              />
+              {!soloReference ? (
+                <Fact
+                  label="Delta"
+                  value={formatDelta(comparison.deltaMs)}
+                  className={deltaClass(comparison.deltaMs)}
+                />
+              ) : null}
             </div>
 
-            <SectorDeltaTable comparison={comparison} />
+            {soloReference ? (
+              <ReferenceSectorTable comparison={comparison} />
+            ) : (
+              <SectorDeltaTable comparison={comparison} />
+            )}
 
             {comparison.timing == null ? (
               <p className="muted">
-                Not enough trace data on these laps to time them against each other.
+                {soloReference
+                  ? "Not enough trace data on this lap to time corners."
+                  : "Not enough trace data on these laps to time them against each other."}
               </p>
-            ) : (
+            ) : soloReference ? (
+              <ReferenceCornerTable
+                corners={comparison.corners}
+                estimated={comparison.timing === "estimated"}
+                reference={reference}
+                trafficPcts={(comparison.referenceTraffic ?? []).map((t) => t.distPct)}
+                onHoverDistPct={onHoverDistPct}
+                onFocusDistPct={onFocusDistPct}
+              />
+            ) : candidate ? (
               <CornerTable
                 corners={comparison.corners}
                 estimated={comparison.timing === "estimated"}
@@ -245,10 +304,11 @@ export function ComparePanel({
                 trafficPcts={(comparison.candidateTraffic ?? []).map((t) => t.distPct)}
                 onHoverDistPct={onHoverDistPct}
                 onFocusDistPct={onFocusDistPct}
+                sameSubsession={sameSubsession}
               />
-            )}
+            ) : null}
 
-            {show("delta") ? (
+            {!soloReference && show("delta") ? (
               <>
                 <div className="chart-title">
                   Time gain / loss vs distance
@@ -275,10 +335,7 @@ export function ComparePanel({
                   onHoverDistPct={onHoverDistPct}
                   corners={comparison.corners}
                   traffic={trafficMarkers}
-                  lines={[
-                    { key: "candSpeed", color: CAND_COLOR },
-                    { key: "refSpeed", color: REF_COLOR },
-                  ]}
+                  lines={pairLines("candSpeed", "refSpeed")}
                 />
               </>
             ) : null}
@@ -291,10 +348,7 @@ export function ComparePanel({
                   onHoverDistPct={onHoverDistPct}
                   corners={comparison.corners}
                   domain={[0, 100]}
-                  lines={[
-                    { key: "candThrottle", color: CAND_COLOR },
-                    { key: "refThrottle", color: REF_COLOR },
-                  ]}
+                  lines={pairLines("candThrottle", "refThrottle")}
                 />
               </>
             ) : null}
@@ -304,7 +358,8 @@ export function ComparePanel({
                 <div className="chart-title">Brake (%)</div>
                 {absBands.length > 0 ? (
                   <p className="muted chart-note">
-                    Shaded: ABS active in each lap&apos;s color.
+                    Shaded: ABS active
+                    {soloReference ? "." : " in each lap's color."}
                   </p>
                 ) : null}
                 <Chart
@@ -313,10 +368,7 @@ export function ComparePanel({
                   corners={comparison.corners}
                   domain={[0, 100]}
                   bands={absBands}
-                  lines={[
-                    { key: "candBrake", color: CAND_COLOR },
-                    { key: "refBrake", color: REF_COLOR },
-                  ]}
+                  lines={pairLines("candBrake", "refBrake")}
                 />
               </>
             ) : null}
@@ -328,10 +380,7 @@ export function ComparePanel({
                   data={chartData}
                   onHoverDistPct={onHoverDistPct}
                   height={140}
-                  lines={[
-                    { key: "candGear", color: CAND_COLOR, step: true },
-                    { key: "refGear", color: REF_COLOR, step: true },
-                  ]}
+                  lines={pairLines("candGear", "refGear", { step: true })}
                 />
               </>
             ) : null}
@@ -343,10 +392,7 @@ export function ComparePanel({
                   data={chartData}
                   onHoverDistPct={onHoverDistPct}
                   height={140}
-                  lines={[
-                    { key: "candRpm", color: CAND_COLOR },
-                    { key: "refRpm", color: REF_COLOR },
-                  ]}
+                  lines={pairLines("candRpm", "refRpm")}
                 />
               </>
             ) : null}
@@ -358,10 +404,7 @@ export function ComparePanel({
                   data={chartData}
                   onHoverDistPct={onHoverDistPct}
                   height={140}
-                  lines={[
-                    { key: "candSteering", color: CAND_COLOR },
-                    { key: "refSteering", color: REF_COLOR },
-                  ]}
+                  lines={pairLines("candSteering", "refSteering")}
                 />
               </>
             ) : null}
@@ -374,10 +417,7 @@ export function ComparePanel({
                   onHoverDistPct={onHoverDistPct}
                   height={140}
                   domain={[0, 100]}
-                  lines={[
-                    { key: "candClutch", color: CAND_COLOR },
-                    { key: "refClutch", color: REF_COLOR },
-                  ]}
+                  lines={pairLines("candClutch", "refClutch")}
                 />
               </>
             ) : null}
@@ -390,10 +430,7 @@ export function ComparePanel({
                   onHoverDistPct={onHoverDistPct}
                   height={140}
                   zeroLine
-                  lines={[
-                    { key: "candLatG", color: CAND_COLOR },
-                    { key: "refLatG", color: REF_COLOR },
-                  ]}
+                  lines={pairLines("candLatG", "refLatG")}
                 />
               </>
             ) : null}
@@ -406,10 +443,7 @@ export function ComparePanel({
                   onHoverDistPct={onHoverDistPct}
                   height={140}
                   zeroLine
-                  lines={[
-                    { key: "candLongG", color: CAND_COLOR },
-                    { key: "refLongG", color: REF_COLOR },
-                  ]}
+                  lines={pairLines("candLongG", "refLongG")}
                 />
               </>
             ) : null}
@@ -422,10 +456,7 @@ export function ComparePanel({
                   onHoverDistPct={onHoverDistPct}
                   height={140}
                   zeroLine
-                  lines={[
-                    { key: "candYaw", color: CAND_COLOR },
-                    { key: "refYaw", color: REF_COLOR },
-                  ]}
+                  lines={pairLines("candYaw", "refYaw")}
                 />
               </>
             ) : null}
@@ -465,6 +496,129 @@ function SectorDeltaTable({ comparison }: { comparison: LapComparison }) {
         ))}
       </tbody>
     </table>
+  );
+}
+
+/** Sector times for the reference lap alone (no compare candidate yet). */
+function ReferenceSectorTable({ comparison }: { comparison: LapComparison }) {
+  if (comparison.sectorDeltas.length === 0) {
+    return <p className="muted">No sector data for this lap.</p>;
+  }
+  return (
+    <table className="data-table" style={{ maxWidth: 280, margin: "8px 0 16px" }}>
+      <thead>
+        <tr>
+          <th>Sector</th>
+          <th className="num">Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {comparison.sectorDeltas.map((s) => (
+          <tr key={s.sectorNum} style={{ cursor: "default" }}>
+            <td>S{s.sectorNum}</td>
+            <td className="num">
+              {s.referenceMs == null ? "—" : (s.referenceMs / 1000).toFixed(3)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function formatCornerTime(ms: number | null | undefined): string {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return "—";
+  return `${(ms / 1000).toFixed(3)}s`;
+}
+
+/** Corner timings for the reference lap alone. */
+function ReferenceCornerTable({
+  corners,
+  estimated,
+  reference,
+  trafficPcts = [],
+  onHoverDistPct,
+  onFocusDistPct,
+}: {
+  corners: CornerDelta[];
+  estimated: boolean;
+  reference: LapSummary;
+  trafficPcts?: number[];
+  onHoverDistPct?: (pct: number | null) => void;
+  onFocusDistPct?: (pct: number) => void;
+}) {
+  const trafficCorners = useMemo(() => {
+    const set = new Set<number>();
+    for (const c of corners) {
+      if (trafficPcts.some((p) => p >= c.entryPct && p <= c.exitPct)) {
+        set.add(c.number);
+      }
+    }
+    return set;
+  }, [corners, trafficPcts]);
+
+  if (corners.length === 0) {
+    return <p className="muted">No corners detected on the reference lap.</p>;
+  }
+
+  return (
+    <div className="corner-analysis">
+      <div className="corner-header">
+        <div className="chart-title">
+          Corners ·{" "}
+          <span style={{ color: REF_COLOR }}>Lap {reference.lapNumber}</span>
+          {estimated ? " (estimated timing)" : ""}
+        </div>
+      </div>
+      {estimated ? (
+        <p className="muted corner-note">
+          This lap was imported before Race Refinery stored lap timing, so corner times are
+          estimated from speed. Re-import the session for exact numbers.
+        </p>
+      ) : null}
+      <table className="data-table corner-table">
+        <thead>
+          <tr>
+            <th title="Detected from the reference lap's speed; may not match official turn numbers">
+              Corner
+            </th>
+            <th className="num" style={{ color: REF_COLOR }} title="Time through this corner">
+              Time
+            </th>
+            <th className="num" title="Slowest speed through the corner">
+              Min km/h
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {corners.map((c) => (
+            <tr
+              key={c.number}
+              className="corner-focusable"
+              title="Click to focus this corner on the track map"
+              onMouseEnter={() => onHoverDistPct?.(c.apexPct)}
+              onMouseLeave={() => onHoverDistPct?.(null)}
+              onClick={() => onFocusDistPct?.(c.apexPct)}
+            >
+              <td>
+                C{c.number}
+                <span className="muted corner-pos"> {(c.apexPct * 100).toFixed(0)}%</span>
+                {trafficCorners.has(c.number) ? (
+                  <span
+                    className="pill traffic"
+                    title="Another car within ~1.5% lap distance in this corner"
+                  >
+                    traffic
+                  </span>
+                ) : null}
+              </td>
+              <td className="num">{formatCornerTime(c.referenceTimeMs)}</td>
+              <td className="num">{formatSpeedKph(c.referenceMinSpeed)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
