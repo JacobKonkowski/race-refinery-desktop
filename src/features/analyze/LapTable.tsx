@@ -1,12 +1,12 @@
 import { Fragment, useMemo } from "react";
 import type { LapSummary } from "../../shared/types";
 import {
-  deltaClass,
   formatDelta,
   formatLapTime,
   formatLiters,
   formatTemp,
 } from "../../shared/format";
+import { bestLapMsFromDelta, deltaBestStyle } from "./deltaColor";
 
 interface Props {
   laps: LapSummary[];
@@ -214,6 +214,7 @@ export function LapTable({
                     .join(" ");
                   const sectorByNum = new Map(lap.sectors.map((s) => [s.sectorNum, s.timeMs]));
                   const outing = groupLabel?.(lap);
+                  const bestLapMs = bestLapMsFromDelta(lap.lapTimeMs, lap.deltaToBestMs);
                   return (
                     <tr
                       key={lap.id}
@@ -259,7 +260,14 @@ export function LapTable({
                         </span>
                       </td>
                       <td className="num">{formatLapTime(lap.lapTimeMs)}</td>
-                      <td className={`num ${deltaClass(lap.deltaToBestMs)}`}>
+                      <td
+                        className="num"
+                        style={deltaBestStyle(
+                          lap.deltaToBestMs,
+                          bestLapMs,
+                          lap.sessionType,
+                        )}
+                      >
                         {formatDelta(lap.deltaToBestMs)}
                       </td>
                       {sectorNums.map((n) => {
