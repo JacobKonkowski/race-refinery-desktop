@@ -16,7 +16,7 @@ npm run tauri dev
 ```
 
 **Full setup + race-night checklist:** [docs/SETUP.md](docs/SETUP.md)  
-**Contributor / architecture map:** [docs/FOUNDATION.md](docs/FOUNDATION.md) · [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) · [SECURITY.md](SECURITY.md)
+**Contributor / architecture map:** [docs/FOUNDATION.md](docs/FOUNDATION.md) · [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) · [SECURITY.md](SECURITY.md) · [AI.md](AI.md)
 
 ## Prerequisites
 
