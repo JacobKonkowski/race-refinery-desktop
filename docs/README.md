@@ -15,7 +15,7 @@ Race Refinery helps you get faster in iRacing: **Lap Library** to browse and ope
 | [DATA_MODEL.md](DATA_MODEL.md) | SQLite schema v2, settings |
 | [FRONTEND.md](FRONTEND.md) | `features/`, `shared/`, `widgets/`, shell |
 | [PRIVACY.md](PRIVACY.md) | Local-only data policy |
-| [AI.md](../AI.md) | AI use for development and graphic assets |
+| [AI.md](../AI.md) | AI use for development |
 | [FIXTURES.md](FIXTURES.md) | Tests without personal IBTs |
 | [PLUGINS.md](PLUGINS.md) | Extension seams for widgets/rules |
 | [I18N.md](I18N.md) | UI string catalogs |
