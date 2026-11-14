@@ -59,4 +59,4 @@ Surfaces for live widgets: **monitor** (always-on-top windows) and **VR** (OpenX
 - [FIXTURES.md](FIXTURES.md) — tests without personal IBTs
 - [PLUGINS.md](PLUGINS.md) — extension points
 - [SECURITY.md](../SECURITY.md) — vulnerability reporting
-- [AI.md](../AI.md) — AI use for development and graphic assets
+- [AI.md](../AI.md) — AI use for development
