@@ -65,6 +65,22 @@ describe("built-in themes", () => {
     expect(colors.text).toBe("#ffffff");
     expect(colors.bg).toBe("#000000");
     expect(colors.borderStrong).not.toBe(DEFAULT_THEME_COLORS.borderStrong);
+    // Mid Δ Best stays amber; reference is warm orange (not the old shared yellow).
+    expect(colors.warning).toBe("#ffc400");
+    expect(colors.reference).toBe("#ff9100");
+    expect(colors.mapReference).toBe("#ff9100");
+    expect(colors.tireLr).toBe("#ff9100");
+    expect(colors.reference).not.toBe(colors.warning);
+    expect(colors.reference).not.toBe(colors.candidate);
+    expect(colors.reference).not.toBe(colors.fast);
+    expect(colors.reference).not.toBe(colors.slow);
+    expect(colors.reference).not.toBe(colors.sessionRace);
+    expect(colors.reference).not.toBe(colors.sessionQualy);
+    expect(colors.reference).not.toBe(colors.sessionPractice);
+    expect(colors.reference).not.toBe(colors.sessionTt);
+    expect(colors.reference).not.toBe(colors.pedalBrake);
+    expect(colors.reference).not.toBe(colors.pedalThrottle);
+    expect(colors.reference).not.toBe(colors.pedalCoast);
   });
 });
 
