@@ -241,6 +241,9 @@ pub struct AppSettings {
     pub audio_voice_commands_enabled: bool,
     #[serde(default)]
     pub audio_voice_push_to_talk_key: String,
+    /// Active UI theme id (`default`, `colorblind-safe`, `high-contrast`, or a user theme slug).
+    #[serde(default = "default_theme_id")]
+    pub theme_id: String,
 }
 
 fn default_true() -> bool {
@@ -249,6 +252,10 @@ fn default_true() -> bool {
 
 fn default_fuel_sensitivity() -> String {
     "normal".into()
+}
+
+fn default_theme_id() -> String {
+    "default".into()
 }
 
 impl Default for AppSettings {
@@ -294,6 +301,7 @@ impl Default for AppSettings {
             audio_inter_message_gap_ms: 0,
             audio_voice_commands_enabled: false,
             audio_voice_push_to_talk_key: String::new(),
+            theme_id: default_theme_id(),
         }
     }
 }
@@ -476,6 +484,25 @@ mod tests {
         let json = serde_json::to_value(&settings).unwrap();
         assert!(json.get("audioCoachVoice").is_none());
         assert!(json.get("audioCoachRate").is_none());
+    }
+
+    #[test]
+    fn theme_id_defaults_when_missing() {
+        let value = serde_json::json!({ "audioCoachVolume": 0.5 });
+        let settings: AppSettings = serde_json::from_value(value).expect("deserialize");
+        assert_eq!(settings.theme_id, "default");
+    }
+
+    #[test]
+    fn theme_id_round_trips() {
+        let settings = AppSettings {
+            theme_id: "colorblind-safe".into(),
+            ..AppSettings::default()
+        };
+        let json = serde_json::to_value(&settings).unwrap();
+        assert_eq!(json["themeId"], "colorblind-safe");
+        let back: AppSettings = serde_json::from_value(json).unwrap();
+        assert_eq!(back.theme_id, "colorblind-safe");
     }
 
     #[test]

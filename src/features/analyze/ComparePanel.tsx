@@ -20,7 +20,7 @@ import type {
 } from "../../shared/types";
 import { deltaClass, formatDelta, formatLapTime, formatSpeedKph } from "../../shared/format";
 import { CornerTable } from "./CornerTable";
-import { getThemeColors, type ThemeColors } from "./compareColors";
+import { useThemeColors, type ThemeColors } from "./compareColors";
 import { compareMode } from "./compareMode";
 import {
   defaultTraceVisibility,
@@ -91,7 +91,7 @@ export function ComparePanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(defaultTraceVisibility);
-  const colors = getThemeColors();
+  const colors = useThemeColors();
 
   const mode = compareMode(candidate, reference);
   /** One lap to inspect (ref only, or Cand === Ref) — graphs/timings alone. */
@@ -152,8 +152,8 @@ export function ComparePanel({
   const absBands = useMemo(() => {
     const spans = comparison?.assists ?? [];
     const filtered = soloReference ? spans.filter((s) => s.lap === "reference") : spans;
-    return assistBands(filtered, "abs", getThemeColors());
-  }, [comparison, soloReference]);
+    return assistBands(filtered, "abs", colors);
+  }, [comparison, soloReference, colors]);
 
   const trafficMarkers = useMemo(() => {
     const refr = (comparison?.referenceTraffic ?? []).map((t) => ({
@@ -562,7 +562,7 @@ function ReferenceCornerTable({
     return set;
   }, [corners, trafficPcts]);
 
-  const colors = getThemeColors();
+  const colors = useThemeColors();
 
   if (corners.length === 0) {
     return <p className="muted">No corners detected on the reference lap.</p>;
@@ -667,7 +667,7 @@ function Chart({
   bands?: ChartBand[];
   traffic?: { pct: number; role: "candidate" | "reference" }[];
 }) {
-  const colors = getThemeColors();
+  const colors = useThemeColors();
   return (
     <div className="chart-wrap" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">

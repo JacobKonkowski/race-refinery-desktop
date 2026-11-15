@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getLapTraces } from "../../shared/api";
-import { getThemeColors } from "../../shared/themeColors";
+import { useThemeColors } from "../../shared/ThemeProvider";
 import { hasRacingLine } from "../../shared/trackMap";
 import type { LapSummary, TracePoint, TrackOutline } from "../../shared/types";
 import { TrackMapWidget } from "../../widgets";
@@ -98,7 +98,7 @@ export function TrackMapPanel({
 
   const widgetCandidateTraces = mode === "compare" ? lineCandidateTraces : pedalTraces;
   const widgetReferenceTraces = mode === "compare" ? referenceTraces : null;
-  const colors = getThemeColors();
+  const colors = useThemeColors();
 
   return (
     <div className="panel" ref={panelRef}>

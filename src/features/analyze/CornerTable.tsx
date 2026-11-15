@@ -4,7 +4,7 @@ import { cornerConsistency } from "../../shared/api";
 import { deltaClass, formatDelta, formatSpeedKph } from "../../shared/format";
 import { CornerDetail, type ConsistencyState } from "./CornerDetail";
 import { isCleanLap, matchConsistency } from "./cornerConsistency";
-import { getThemeColors } from "./compareColors";
+import { useThemeColors } from "./compareColors";
 
 /** Corner · Cand · Ref · Δ · bar · Entry Δ · Exit Δ · Brake · Min · Throttle */
 const COLUMNS = 10;
@@ -118,7 +118,7 @@ export function CornerTable({
     return <p className="muted">No corners detected on the reference lap.</p>;
   }
 
-  const colors = getThemeColors();
+  const colors = useThemeColors();
 
   return (
     <div className="corner-analysis">
