@@ -17,7 +17,7 @@ import type {
   LapSummary,
 } from "../../shared/types";
 import { formatDelta } from "../../shared/format";
-import { getThemeColors } from "./compareColors";
+import { useThemeColors } from "./compareColors";
 import { OFF_SCALE_MS, plottablePoints } from "./cornerConsistency";
 
 export type ConsistencyState =
@@ -79,7 +79,7 @@ export function CornerDetail({
   candidateLapId,
   referenceLapId,
 }: Props) {
-  const colors = getThemeColors();
+  const colors = useThemeColors();
   const missingAssists =
     corner.candidate.absMs == null || corner.reference.absMs == null;
 
@@ -139,6 +139,7 @@ function ConsistencyScatter({
   candidateLapId: number;
   referenceLapId: number;
 }) {
+  const colors = useThemeColors();
   const series = useMemo(() => {
     if (state.status !== "ready" || !state.corner) return null;
     const lapNumber = new Map(laps.map((l) => [l.id, l.lapNumber]));
@@ -174,7 +175,6 @@ function ConsistencyScatter({
   }
 
   const spread = state.corner.brakeSpreadM;
-  const colors = getThemeColors();
   return (
     <>
       <div className="chart-title">

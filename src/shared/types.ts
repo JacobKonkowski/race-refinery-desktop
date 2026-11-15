@@ -577,6 +577,8 @@ export interface AppSettings {
   audioInterMessageGapMs: number;
   audioVoiceCommandsEnabled?: boolean;
   audioVoicePushToTalkKey?: string;
+  /** Active UI theme id (`default`, `colorblind-safe`, `high-contrast`, or a user theme slug). */
+  themeId: string;
 }
 
 export interface AudioCoachStatus {

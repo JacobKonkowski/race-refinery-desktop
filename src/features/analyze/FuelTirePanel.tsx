@@ -11,7 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import type { LapSummary } from "../../shared/types";
-import { getThemeColors } from "../../shared/themeColors";
+import { useThemeColors } from "../../shared/ThemeProvider";
 
 interface Props {
   laps: LapSummary[];
@@ -19,7 +19,7 @@ interface Props {
 
 /** Fuel use, tire temps, and pressures from lap summaries. */
 export function FuelTirePanel({ laps }: Props) {
-  const colors = getThemeColors();
+  const colors = useThemeColors();
   const tooltipStyle = {
     background: colors.tooltipBg,
     border: `1px solid ${colors.tooltipBorder}`,

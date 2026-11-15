@@ -953,13 +953,13 @@
   background: var(--color-surface-hover);
 }
 .data-table tbody tr.selected {
-  background: rgba(74, 163, 255, 0.12);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
 .data-table tbody tr.reference {
-  box-shadow: inset 3px 0 0 var(--color-warning);
+  box-shadow: inset 3px 0 0 var(--color-reference);
 }
 .data-table tbody tr.candidate {
-  box-shadow: inset 3px 0 0 var(--color-accent);
+  box-shadow: inset 3px 0 0 var(--color-candidate);
 }
 .data-table .subsession-row td {
   background: var(--color-bg);
@@ -1006,7 +1006,7 @@
   color: var(--color-text-muted);
 }
 .pill.pit {
-  background: rgba(210, 153, 34, 0.16);
+  background: color-mix(in srgb, var(--color-warning) 16%, transparent);
   color: var(--color-warning);
 }
 
@@ -1046,7 +1046,7 @@
   padding: 10px 14px;
   border-radius: var(--radius);
   border: 1px solid var(--color-warning);
-  background: rgba(210, 153, 34, 0.1);
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
   color: var(--color-text);
   font-size: 13px;
 }
@@ -1233,15 +1233,15 @@
   vertical-align: middle;
 }
 .lap-legend .swatch.cand {
-  background: var(--color-accent);
+  background: var(--color-candidate);
 }
 .lap-legend .swatch.ref {
-  background: var(--color-warning);
+  background: var(--color-reference);
 }
 .lap-ref-hint {
   margin: 6px 0 0;
   font-size: 12px;
-  color: var(--color-warning);
+  color: var(--color-reference);
 }
 .lap-num-cell {
   display: inline-flex;
@@ -1257,16 +1257,16 @@
   line-height: 1.4;
 }
 .pill.lap-role.cand {
-  background: rgba(74, 163, 255, 0.18);
-  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-candidate) 22%, transparent);
+  color: var(--color-candidate);
 }
 .pill.lap-role.ref {
-  background: rgba(210, 153, 34, 0.18);
-  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-reference) 22%, transparent);
+  color: var(--color-reference);
 }
 
 .data-table tbody tr.candidate.reference {
-  box-shadow: inset 3px 0 0 var(--color-accent), inset 6px 0 0 var(--color-warning);
+  box-shadow: inset 3px 0 0 var(--color-candidate), inset 6px 0 0 var(--color-reference);
 }
 
 .session-header .sh-ibt {
@@ -1441,7 +1441,7 @@
 .tab.active {
   color: var(--color-text);
   border-color: var(--color-accent);
-  background: rgba(74, 163, 255, 0.12);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
 .live-columns {
   display: grid;
@@ -1484,7 +1484,7 @@
   font-size: 12px;
 }
 .leaderboard-you {
-  background: rgba(74, 163, 255, 0.1);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
 }
 .audio-toggles {
   display: flex;
@@ -1763,7 +1763,7 @@
   background: var(--color-surface-hover);
 }
 .studio-item.active {
-  background: rgba(74, 163, 255, 0.12);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
   border-left-color: var(--color-accent);
 }
 .studio-item-prompt {

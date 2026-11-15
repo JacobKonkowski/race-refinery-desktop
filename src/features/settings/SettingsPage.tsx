@@ -9,6 +9,7 @@ import {
 } from "../../shared/api";
 import { Slider } from "../../shared/Slider";
 import { showToast } from "../../shared/toast";
+import { applyTheme, BUILTIN_THEMES, DEFAULT_THEME_ID } from "../../shared/themes";
 import { defaultOverlayLayout } from "../../shared/types";
 import type { AppSettings, WidgetPlacement } from "../../shared/types";
 import { coachTestMessage } from "../../shared/voicePacks";
@@ -207,8 +208,44 @@ export function SettingsPage() {
   const button = settings.vrRecenterButton;
   const native = settings.vrMode !== "web";
 
+  const themeId = settings.themeId || DEFAULT_THEME_ID;
+  const themeMeta = BUILTIN_THEMES.find((t) => t.id === themeId) ?? BUILTIN_THEMES[0];
+
   return (
     <div className="settings-page">
+      <div className="panel">
+        <div className="panel-header">
+          <h2>Appearance</h2>
+        </div>
+        <div className="panel-body">
+          <div className="settings-field">
+            <label htmlFor="settings-theme" className="muted small settings-inline-label">
+              Theme
+            </label>
+            <select
+              id="settings-theme"
+              value={themeId}
+              onChange={(e) => {
+                const nextId = e.target.value;
+                applyTheme(nextId);
+                update({ themeId: nextId });
+              }}
+            >
+              {BUILTIN_THEMES.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="muted small">{themeMeta.description}</p>
+          <p className="muted small">
+            Applies to Analyze and desktop chrome (including map pedals). Overlay HUD keeps its
+            cyan Iron Man look.
+          </p>
+        </div>
+      </div>
+
       <div className="panel">
         <div className="panel-header">
           <h2>VR HUD</h2>
