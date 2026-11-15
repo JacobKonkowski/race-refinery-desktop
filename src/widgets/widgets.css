@@ -163,17 +163,17 @@
   stroke-width: calc(0.008 * var(--pw-map-k, 1));
   stroke-linejoin: round;
 }
-.pw-trackmap-pedal.brake { stroke: var(--pw-slow, #ff6b6b); }
-.pw-trackmap-pedal.throttle { stroke: var(--pw-fast, #5dffa8); }
-.pw-trackmap-pedal.coast { stroke: var(--pw-warn, #ffb347); opacity: 0.5; }
+.pw-trackmap-pedal.brake { stroke: var(--pw-pedal-brake, var(--pw-slow, #ff6b6b)); }
+.pw-trackmap-pedal.throttle { stroke: var(--pw-pedal-throttle, var(--pw-fast, #5dffa8)); }
+.pw-trackmap-pedal.coast { stroke: var(--pw-pedal-coast, var(--pw-warn, #ffb347)); opacity: 0.5; }
 /* Racing lines keep the compare chart's candidate / reference colors. */
 .pw-trackmap-line {
   fill: none;
   stroke-width: calc(0.006 * var(--pw-map-k, 1));
   stroke-linejoin: round;
 }
-.pw-trackmap-line.candidate { stroke: #4aa3ff; }
-.pw-trackmap-line.reference { stroke: #d29922; }
+.pw-trackmap-line.candidate { stroke: var(--pw-map-candidate, var(--color-candidate, #4aa3ff)); }
+.pw-trackmap-line.reference { stroke: var(--pw-map-reference, var(--color-reference, #d29922)); }
 .pw-trackmap-marker {
   fill: none;
   stroke: var(--pw-hero, #e8fff3);

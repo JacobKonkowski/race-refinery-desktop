@@ -20,7 +20,7 @@ import type {
 } from "../../shared/types";
 import { deltaClass, formatDelta, formatLapTime, formatSpeedKph } from "../../shared/format";
 import { CornerTable } from "./CornerTable";
-import { CAND_COLOR, DELTA_COLOR, REF_COLOR } from "./compareColors";
+import { getThemeColors, type ThemeColors } from "./compareColors";
 import { compareMode } from "./compareMode";
 import {
   defaultTraceVisibility,
@@ -56,13 +56,17 @@ interface ChartBand {
   label: string;
 }
 
-function assistBands(spans: AssistSpan[], kind: AssistKind): ChartBand[] {
+function assistBands(
+  spans: AssistSpan[],
+  kind: AssistKind,
+  colors: ThemeColors,
+): ChartBand[] {
   return spans
     .filter((s) => s.kind === kind)
     .map((s) => ({
       x1: +(s.startPct * 100).toFixed(2),
       x2: +(s.endPct * 100).toFixed(2),
-      color: s.lap === "candidate" ? CAND_COLOR : REF_COLOR,
+      color: s.lap === "candidate" ? colors.candidate : colors.reference,
       label: `${ASSIST_NAMES[kind]} (${s.lap})`,
     }));
 }
@@ -87,6 +91,7 @@ export function ComparePanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(defaultTraceVisibility);
+  const colors = getThemeColors();
 
   const mode = compareMode(candidate, reference);
   /** One lap to inspect (ref only, or Cand === Ref) — graphs/timings alone. */
@@ -147,7 +152,7 @@ export function ComparePanel({
   const absBands = useMemo(() => {
     const spans = comparison?.assists ?? [];
     const filtered = soloReference ? spans.filter((s) => s.lap === "reference") : spans;
-    return assistBands(filtered, "abs");
+    return assistBands(filtered, "abs", getThemeColors());
   }, [comparison, soloReference]);
 
   const trafficMarkers = useMemo(() => {
@@ -177,10 +182,10 @@ export function ComparePanel({
     opts?: { step?: boolean },
   ): ChartLine[] =>
     soloReference
-      ? [{ key: refKey, color: REF_COLOR, ...opts }]
+      ? [{ key: refKey, color: colors.reference, ...opts }]
       : [
-          { key: candKey, color: CAND_COLOR, ...opts },
-          { key: refKey, color: REF_COLOR, ...opts },
+          { key: candKey, color: colors.candidate, ...opts },
+          { key: refKey, color: colors.reference, ...opts },
         ];
 
   return (
@@ -239,19 +244,19 @@ export function ComparePanel({
             <div className="legend">
               {candidate && !soloReference ? (
                 <span>
-                  <span className="swatch" style={{ background: CAND_COLOR }} />
+                  <span className="swatch" style={{ background: colors.candidate }} />
                   Candidate — Lap {candidate.lapNumber}
                   {candidate.hasTraffic ? " · traffic" : ""}
                 </span>
               ) : null}
               <span>
-                <span className="swatch" style={{ background: REF_COLOR }} />
+                <span className="swatch" style={{ background: colors.reference }} />
                 Reference — Lap {reference.lapNumber}
                 {reference.hasTraffic ? " · traffic" : ""}
               </span>
               {!soloReference ? (
                 <span>
-                  <span className="swatch" style={{ background: DELTA_COLOR }} />
+                  <span className="swatch" style={{ background: colors.delta }} />
                   Time gain/loss
                 </span>
               ) : (
@@ -317,7 +322,7 @@ export function ComparePanel({
                 <Chart
                   data={chartData}
                   onHoverDistPct={onHoverDistPct}
-                  lines={[{ key: "deltaMs", color: DELTA_COLOR }]}
+                  lines={[{ key: "deltaMs", color: colors.delta }]}
                   yFormatter={(v) => `${v >= 0 ? "+" : ""}${(v / 1000).toFixed(3)}s`}
                   zeroLine
                   corners={comparison.corners}
@@ -557,6 +562,8 @@ function ReferenceCornerTable({
     return set;
   }, [corners, trafficPcts]);
 
+  const colors = getThemeColors();
+
   if (corners.length === 0) {
     return <p className="muted">No corners detected on the reference lap.</p>;
   }
@@ -566,7 +573,7 @@ function ReferenceCornerTable({
       <div className="corner-header">
         <div className="chart-title">
           Corners ·{" "}
-          <span style={{ color: REF_COLOR }}>Lap {reference.lapNumber}</span>
+          <span style={{ color: colors.reference }}>Lap {reference.lapNumber}</span>
           {estimated ? " (estimated timing)" : ""}
         </div>
       </div>
@@ -582,7 +589,11 @@ function ReferenceCornerTable({
             <th title="Detected from the reference lap's speed; may not match official turn numbers">
               Corner
             </th>
-            <th className="num" style={{ color: REF_COLOR }} title="Time through this corner">
+            <th
+              className="num"
+              style={{ color: colors.reference }}
+              title="Time through this corner"
+            >
               Time
             </th>
             <th className="num" title="Slowest speed through the corner">
@@ -656,6 +667,7 @@ function Chart({
   bands?: ChartBand[];
   traffic?: { pct: number; role: "candidate" | "reference" }[];
 }) {
+  const colors = getThemeColors();
   return (
     <div className="chart-wrap" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -669,25 +681,25 @@ function Chart({
           }}
           onMouseLeave={() => onHoverDistPct?.(null)}
         >
-          <CartesianGrid stroke="#262d3a" strokeDasharray="3 3" />
+          <CartesianGrid stroke={colors.chartGrid} strokeDasharray="3 3" />
           <XAxis
             dataKey="x"
             type="number"
             domain={[0, 100]}
-            tick={{ fill: "#8b95a5", fontSize: 11 }}
+            tick={{ fill: colors.chartTick, fontSize: 11 }}
             tickFormatter={(v) => `${v}%`}
           />
           <YAxis
             domain={domain ?? ["auto", "auto"]}
-            tick={{ fill: "#8b95a5", fontSize: 11 }}
+            tick={{ fill: colors.chartTick, fontSize: 11 }}
             width={52}
             allowDecimals={!lines.some((l) => l.step)}
             tickFormatter={yFormatter}
           />
           <Tooltip
             contentStyle={{
-              background: "#12161f",
-              border: "1px solid #262d3a",
+              background: colors.tooltipBg,
+              border: `1px solid ${colors.tooltipBorder}`,
               borderRadius: 6,
               fontSize: 12,
             }}
@@ -704,7 +716,9 @@ function Chart({
               return [value, name];
             }}
           />
-          {zeroLine ? <ReferenceLine y={0} stroke="#5b6472" strokeDasharray="4 4" /> : null}
+          {zeroLine ? (
+            <ReferenceLine y={0} stroke={colors.chartZero} strokeDasharray="4 4" />
+          ) : null}
           {bands?.map((b) => (
             <ReferenceArea
               key={`${b.label}-${b.x1}`}
@@ -724,7 +738,12 @@ function Chart({
               strokeDasharray="2 4"
               label={
                 cornerLabels
-                  ? { value: `C${c.number}`, position: "insideTop", fill: "#8b95a5", fontSize: 10 }
+                  ? {
+                      value: `C${c.number}`,
+                      position: "insideTop",
+                      fill: colors.chartTick,
+                      fontSize: 10,
+                    }
                   : undefined
               }
             />
@@ -733,7 +752,7 @@ function Chart({
             <ReferenceLine
               key={`traffic-${t.role}-${i}-${t.pct}`}
               x={+(t.pct * 100).toFixed(2)}
-              stroke={t.role === "candidate" ? CAND_COLOR : REF_COLOR}
+              stroke={t.role === "candidate" ? colors.candidate : colors.reference}
               strokeOpacity={0.45}
               strokeDasharray="1 3"
             />

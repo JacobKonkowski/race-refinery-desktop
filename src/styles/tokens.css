@@ -19,6 +19,37 @@
   --color-slow: #f85149; /* slower than reference */
   --color-warning: #d29922;
 
+  /* Compare series */
+  --color-candidate: #4aa3ff;
+  --color-reference: #d29922;
+  --color-delta: #a371f7;
+
+  /* Chart chrome */
+  --color-chart-grid: #262d3a;
+  --color-chart-tick: #8b95a5;
+  --color-chart-zero: #5b6472;
+  --color-tooltip-bg: #12161f;
+  --color-tooltip-border: #262d3a;
+
+  /* Tire series (LF / RF / LR / RR) */
+  --color-tire-lf: #f85149;
+  --color-tire-rf: #4aa3ff;
+  --color-tire-lr: #d29922;
+  --color-tire-rr: #3fb950;
+
+  /* Session-type chips */
+  --color-session-race: #e5484d;
+  --color-session-qualy: #a855f7;
+  --color-session-practice: #46a758;
+  --color-session-tt: #e6b800;
+
+  /* Analyze track-map cand/ref + pedals (overlay Iron Man --pw-glow* stay in widgets.css) */
+  --pw-map-candidate: #4aa3ff;
+  --pw-map-reference: #d29922;
+  --pw-pedal-brake: #ff6b6b;
+  --pw-pedal-throttle: #5dffa8;
+  --pw-pedal-coast: #ffb347;
+
   --radius: 8px;
   --radius-sm: 4px;
 
