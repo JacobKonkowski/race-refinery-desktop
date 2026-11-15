@@ -84,10 +84,10 @@ const COLORBLIND_SAFE_COLORS: ThemeColors = {
   fast: "#009e73",
   slow: "#0072b2",
   warning: "#ffbf00",
-  // Compare: high-L yellow vs bright hot pink (readable on dark; not two pastels).
+  // Compare: high-L yellow vs vivid sky/azure (deuteranopia-separable; not pink/gray).
   candidate: "#fff200",
-  reference: "#ff5ec8",
-  delta: "#00e5ff",
+  reference: "#00aaff",
+  delta: "#ff8c1a",
   // Chart chrome: lighter grid/ticks so traces don't disappear into the panel.
   chartGrid: "#5a6578",
   chartTick: "#c5ced9",
@@ -96,14 +96,14 @@ const COLORBLIND_SAFE_COLORS: ThemeColors = {
   tooltipBorder: "#7a8699",
   tireLf: "#0072b2",
   tireRf: "#009e73",
-  tireLr: "#ff5ec8",
+  tireLr: "#00aaff",
   tireRr: "#fff200",
   sessionRace: "#0072b2",
-  sessionQualy: "#ff5ec8",
+  sessionQualy: "#00aaff",
   sessionPractice: "#009e73",
   sessionTt: "#ffbf00",
   mapCandidate: "#fff200",
-  mapReference: "#ff5ec8",
+  mapReference: "#00aaff",
   // Pedals: bright cyan vs orange (not two blues) — map + brake/throttle charts.
   pedalBrake: "#ff8c1a",
   pedalThrottle: "#00e5ff",

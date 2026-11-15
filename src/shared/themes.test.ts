@@ -37,10 +37,10 @@ describe("built-in themes", () => {
     expect(colors.warning).not.toBe(colors.slow);
     expect(colors.fast).not.toBe(colors.slow);
     expect(colors.fast).not.toBe(colors.warning);
-    // Cand/ref: high-L yellow vs bright hot pink (readable on dark).
+    // Cand/ref: high-L yellow vs vivid sky/azure (not pink/gray).
     expect(colors.candidate).toBe("#fff200");
-    expect(colors.reference).toBe("#ff5ec8");
-    expect(colors.delta).toBe("#00e5ff");
+    expect(colors.reference).toBe("#00aaff");
+    expect(colors.delta).toBe("#ff8c1a");
     expect(colors.candidate).not.toBe(colors.fast);
     expect(colors.reference).not.toBe(colors.slow);
     expect(colors.reference).not.toBe(colors.warning);
