@@ -66,10 +66,11 @@ Pack, race, pace, gap, and strategy alerts are suppressed on pit road or off tra
 
 `CarIdxF2Time` and the per-car flag semantics are interpreted conservatively. Gaps are
 computed as the absolute difference in F2 time between adjacent cars in the overall
-order, and the blue flag is read from the player's `SessionFlags` bitfield. Both should
-be sanity-checked against a live or replay session; if iRacing reports them differently
-than assumed, adjust the resolver in `competitors.rs` / `crates/race-refinery-audio/src/engine` without changing
-the surrounding feature.
+order, and blue / black are read from the player's `SessionFlags` bitfield using the
+SDK masks (`irsdk_blue` = `0x20`, `irsdk_black` = `0x10000`; `0x40` is debris, not black).
+Both should be sanity-checked against a live or replay session; if iRacing reports them
+differently than assumed, adjust the resolver in `competitors.rs` /
+`crates/race-refinery-audio/src/engine` without changing the surrounding feature.
 
 ## Multi-class notes
 

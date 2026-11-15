@@ -1,7 +1,7 @@
 use race_refinery_live::PackState;
 use race_refinery_settings::{AppSettings, ChatterLevel};
 
-use super::super::phrasing::push_delta;
+use super::super::phrasing::{push_delta, push_delta_direction};
 use super::super::speech::{SpeechPlan, SpeechUnit};
 
 pub fn pack_clear_clip(prev_pack: PackState) -> &'static str {
@@ -17,16 +17,17 @@ pub fn push_pace_delta_units(units: &mut Vec<SpeechUnit>, delta_ms: f64) {
         units.push(SpeechUnit::Clip("pace_matching_best".into()));
         return;
     }
-    if delta_ms > 0.0 {
-        units.push(SpeechUnit::Clip("pace_off_pb_intro".into()));
-    }
     push_delta(units, delta_ms);
 }
 
-/// Delta followed by the `suffix_clip` naming what it is relative to
-/// (`versus_previous_lap`, `off_session_best`).
+/// Delta vs a named reference (`versus_previous_lap`, `off_session_best`) —
+/// direction only, so the suffix carries the reference (not "your best").
 pub fn push_pace_delta_with_suffix(units: &mut Vec<SpeechUnit>, delta_ms: f64, suffix_clip: &str) {
-    push_pace_delta_units(units, delta_ms);
+    if delta_ms.abs() < 50.0 {
+        units.push(SpeechUnit::Clip("pace_matching_best".into()));
+        return;
+    }
+    push_delta_direction(units, delta_ms);
     units.push(SpeechUnit::Clip(suffix_clip.into()));
 }
 

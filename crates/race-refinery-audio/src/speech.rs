@@ -148,8 +148,11 @@ mod tests {
 
     #[test]
     fn deltas_gaps_and_positions() {
-        assert_eq!(text(|u| push_delta(u, -1_440.0)), "1.4 seconds faster.");
-        assert_eq!(text(|u| push_delta(u, 350.0)), "4 tenths slower.");
+        assert_eq!(
+            text(|u| push_delta(u, -1_440.0)),
+            "1.4 seconds faster than your best."
+        );
+        assert_eq!(text(|u| push_delta(u, 350.0)), "4 tenths slower than your best.");
         assert_eq!(text(|u| push_gap_seconds(u, 3.0)), "3 seconds");
         assert_eq!(text(|u| push_position(u, 24)), "P24");
         assert_eq!(text(|u| push_position(u, 31)), "P31");

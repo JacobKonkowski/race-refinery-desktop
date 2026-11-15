@@ -65,7 +65,7 @@ A plan's clips are rendered into runs: consecutive clips and pauses are stitched
 | 21–99 | Tens + ones (`29` → `n20` `n9`, `75` → `n70` `n5`) |
 | 100+ | Digit by digit (`105` → `n1` `n0` `n5`) |
 | Lap / sector time | Tenths in radio cadence: `1:29.452` → "one minute twenty-nine point five"; seconds under ten use `oh` (`1:05.3` → "one oh five point three"); under a minute there is no minute word |
-| Delta | Tenths under a second (`1 tenth`, never `0 tenths`), else seconds to a tenth, then `faster` / `slower` |
+| Delta | Tenths under a second (`1 tenth`, never `0 tenths`), else seconds to a tenth, then `faster` / `slower` `your_best` (“than your best”); other references use a suffix clip instead (`versus_previous_lap`, `off_session_best`) |
 | Gap | Seconds to a tenth, no trailing `.0` (`3 seconds`, `2 point 4 seconds`) |
 | Position | `position` + number ("position twenty-four", shown as `P24`); after `position_up` / `position_down` just the number |
 | Fuel | `fuel` + liters ("fuel twelve liters"), then `about` N `laps` `of_fuel` when the range is known |
@@ -102,7 +102,7 @@ Per-category toggles in settings: pack, flags, incidents, fuel/race, gaps, pace,
 | Area | Triggers | Clips |
 |------|----------|-------|
 | Session intro | Telemetry connect | `intro_online` `intro_good_luck` |
-| Flags | `SessionFlags` edges | `flag_*` |
+| Flags | Player `SessionFlags` rising edges (`irsdk_Flags`; black = `0x00010000`, not debris `0x40`) | `flag_*` |
 | Incidents | `PlayerCarMyIncidentCount` increase | `incident_intro` + count (+ `limit` + limit) |
 | Pack | `CarLeftRight` / `pack_state` | `pack_*` |
 | Sector complete | Sector boundary cross | `sector` + number + time + deltas |
