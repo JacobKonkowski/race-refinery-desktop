@@ -37,10 +37,18 @@ describe("built-in themes", () => {
     expect(colors.warning).not.toBe(colors.slow);
     expect(colors.fast).not.toBe(colors.slow);
     expect(colors.fast).not.toBe(colors.warning);
-    // Cand/ref distinct from pace.
+    // Cand/ref/delta distinct from each other and from pace.
+    expect(colors.candidate).toBe("#5ec8ff");
+    expect(colors.reference).toBe("#ff7eb6");
+    expect(colors.delta).toBe("#f0e442");
     expect(colors.candidate).not.toBe(colors.fast);
     expect(colors.reference).not.toBe(colors.slow);
     expect(colors.reference).not.toBe(colors.warning);
+    expect(colors.delta).not.toBe(colors.candidate);
+    expect(colors.delta).not.toBe(colors.reference);
+    // Chart chrome brighter than default dark borders.
+    expect(colors.chartGrid).toBe("#5a6578");
+    expect(colors.chartTick).toBe("#c5ced9");
   });
 
   it("raises text/border contrast for High contrast", () => {
