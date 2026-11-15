@@ -37,9 +37,9 @@ describe("built-in themes", () => {
     expect(colors.warning).not.toBe(colors.slow);
     expect(colors.fast).not.toBe(colors.slow);
     expect(colors.fast).not.toBe(colors.warning);
-    // Cand/ref: high-L yellow-white vs deep magenta (not two pastels).
+    // Cand/ref: high-L yellow vs bright hot pink (readable on dark).
     expect(colors.candidate).toBe("#fff200");
-    expect(colors.reference).toBe("#9b0068");
+    expect(colors.reference).toBe("#ff5ec8");
     expect(colors.delta).toBe("#00e5ff");
     expect(colors.candidate).not.toBe(colors.fast);
     expect(colors.reference).not.toBe(colors.slow);
