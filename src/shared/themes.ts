@@ -104,9 +104,10 @@ const COLORBLIND_SAFE_COLORS: ThemeColors = {
   sessionTt: "#ffbf00",
   mapCandidate: "#5ec8ff",
   mapReference: "#ff7eb6",
-  pedalBrake: "#0072b2",
-  pedalThrottle: "#009e73",
-  pedalCoast: "#ffbf00",
+  // Pedals: bright cyan vs orange (not two blues) — map + brake/throttle charts.
+  pedalBrake: "#ff8c1a",
+  pedalThrottle: "#00e5ff",
+  pedalCoast: "#c5ced9",
 };
 
 const COLORBLIND_SURFACE_HOVER = "#1e2432";

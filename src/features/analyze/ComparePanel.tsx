@@ -179,14 +179,31 @@ export function ComparePanel({
   const pairLines = (
     candKey: string,
     refKey: string,
-    opts?: { step?: boolean },
-  ): ChartLine[] =>
-    soloReference
-      ? [{ key: refKey, color: colors.reference, ...opts }]
+    opts?: { step?: boolean; candColor?: string; refColor?: string },
+  ): ChartLine[] => {
+    const candColor = opts?.candColor ?? colors.candidate;
+    const refColor = opts?.refColor ?? colors.reference;
+    const { step } = opts ?? {};
+    return soloReference
+      ? [{ key: refKey, color: refColor, step }]
       : [
-          { key: candKey, color: colors.candidate, ...opts },
-          { key: refKey, color: colors.reference, ...opts },
+          { key: candKey, color: candColor, step },
+          { key: refKey, color: refColor, step },
         ];
+  };
+
+  /** Brake vs throttle use pedal tokens so the channels stay separable under deuteranopia. */
+  const throttleLines = () =>
+    pairLines("candThrottle", "refThrottle", {
+      candColor: colors.pedalThrottle,
+      // Solo: throttle cyan. Compare: cyan cand vs magenta ref.
+      refColor: soloReference ? colors.pedalThrottle : colors.reference,
+    });
+  const brakeLines = () =>
+    pairLines("candBrake", "refBrake", {
+      candColor: colors.pedalBrake,
+      refColor: soloReference ? colors.pedalBrake : colors.reference,
+    });
 
   return (
     <div className="panel compare-panel">
@@ -353,7 +370,7 @@ export function ComparePanel({
                   onHoverDistPct={onHoverDistPct}
                   corners={comparison.corners}
                   domain={[0, 100]}
-                  lines={pairLines("candThrottle", "refThrottle")}
+                  lines={throttleLines()}
                 />
               </>
             ) : null}
@@ -373,7 +390,7 @@ export function ComparePanel({
                   corners={comparison.corners}
                   domain={[0, 100]}
                   bands={absBands}
-                  lines={pairLines("candBrake", "refBrake")}
+                  lines={brakeLines()}
                 />
               </>
             ) : null}

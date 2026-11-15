@@ -86,9 +86,11 @@ describe("applyTheme", () => {
     expect(root.style.getPropertyValue("--color-fast")).toBe("#009e73");
     expect(root.style.getPropertyValue("--color-warning")).toBe("#ffbf00");
     expect(root.style.getPropertyValue("--color-slow")).toBe("#0072b2");
-    expect(root.style.getPropertyValue("--pw-pedal-brake")).toBe("#0072b2");
+    expect(root.style.getPropertyValue("--pw-pedal-brake")).toBe("#ff8c1a");
+    expect(root.style.getPropertyValue("--pw-pedal-throttle")).toBe("#00e5ff");
     expect(root.style.getPropertyValue(THEME_CSS_VARS.fast)).toBe("#009e73");
     expect(colors.fast).toBe("#009e73");
+    expect(colors.pedalBrake).not.toBe(colors.pedalThrottle);
   });
 
   it("does not set overlay Iron Man HUD vars on the root", () => {
