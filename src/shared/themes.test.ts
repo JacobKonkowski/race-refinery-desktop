@@ -37,10 +37,10 @@ describe("built-in themes", () => {
     expect(colors.warning).not.toBe(colors.slow);
     expect(colors.fast).not.toBe(colors.slow);
     expect(colors.fast).not.toBe(colors.warning);
-    // Cand/ref/delta distinct from each other and from pace.
-    expect(colors.candidate).toBe("#5ec8ff");
-    expect(colors.reference).toBe("#ff7eb6");
-    expect(colors.delta).toBe("#f0e442");
+    // Cand/ref: high-L yellow-white vs deep magenta (not two pastels).
+    expect(colors.candidate).toBe("#fff200");
+    expect(colors.reference).toBe("#9b0068");
+    expect(colors.delta).toBe("#00e5ff");
     expect(colors.candidate).not.toBe(colors.fast);
     expect(colors.reference).not.toBe(colors.slow);
     expect(colors.reference).not.toBe(colors.warning);

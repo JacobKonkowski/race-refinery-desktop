@@ -185,10 +185,17 @@ export function ComparePanel({
     const refColor = opts?.refColor ?? colors.reference;
     const { step } = opts ?? {};
     return soloReference
-      ? [{ key: refKey, color: refColor, step }]
+      ? [{ key: refKey, color: refColor, step, strokeWidth: 2 }]
       : [
-          { key: candKey, color: candColor, step },
-          { key: refKey, color: refColor, step },
+          // Solid + thicker cand vs dashed ref — readable when hues collide under overlap.
+          { key: candKey, color: candColor, step, strokeWidth: 2.4 },
+          {
+            key: refKey,
+            color: refColor,
+            step,
+            strokeWidth: 1.8,
+            strokeDasharray: "6 3",
+          },
         ];
   };
 
@@ -655,6 +662,9 @@ interface ChartLine {
   color: string;
   /** Use a step curve (gear). */
   step?: boolean;
+  /** Redundant cue when cand/ref overlap (colorblind-safe). */
+  strokeWidth?: number;
+  strokeDasharray?: string;
 }
 
 function Chart({
@@ -781,7 +791,8 @@ function Chart({
               dataKey={l.key}
               stroke={l.color}
               dot={false}
-              strokeWidth={1.6}
+              strokeWidth={l.strokeWidth ?? 1.6}
+              strokeDasharray={l.strokeDasharray}
               connectNulls={false}
               isAnimationActive={false}
             />
