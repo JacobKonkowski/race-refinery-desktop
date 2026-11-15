@@ -179,38 +179,18 @@ export function ComparePanel({
   const pairLines = (
     candKey: string,
     refKey: string,
-    opts?: { step?: boolean; candColor?: string; refColor?: string },
+    opts?: { step?: boolean },
   ): ChartLine[] => {
-    const candColor = opts?.candColor ?? colors.candidate;
-    const refColor = opts?.refColor ?? colors.reference;
     const { step } = opts ?? {};
+    // Speed / Throttle / Brake all share cand/ref colors when comparing two laps.
+    // Pedal orange/cyan stay on the track-map pedal view only.
     return soloReference
-      ? [{ key: refKey, color: refColor, step, strokeWidth: 2 }]
+      ? [{ key: refKey, color: colors.reference, step, strokeWidth: 2 }]
       : [
-          // Solid + thicker cand vs dashed ref — readable when hues collide under overlap.
-          { key: candKey, color: candColor, step, strokeWidth: 2.4 },
-          {
-            key: refKey,
-            color: refColor,
-            step,
-            strokeWidth: 1.8,
-            strokeDasharray: "6 3",
-          },
+          { key: candKey, color: colors.candidate, step, strokeWidth: 2.4 },
+          { key: refKey, color: colors.reference, step, strokeWidth: 1.8 },
         ];
   };
-
-  /** Brake vs throttle use pedal tokens so the channels stay separable under deuteranopia. */
-  const throttleLines = () =>
-    pairLines("candThrottle", "refThrottle", {
-      candColor: colors.pedalThrottle,
-      // Solo: throttle cyan. Compare: cyan cand vs magenta ref.
-      refColor: soloReference ? colors.pedalThrottle : colors.reference,
-    });
-  const brakeLines = () =>
-    pairLines("candBrake", "refBrake", {
-      candColor: colors.pedalBrake,
-      refColor: soloReference ? colors.pedalBrake : colors.reference,
-    });
 
   return (
     <div className="panel compare-panel">
@@ -377,7 +357,7 @@ export function ComparePanel({
                   onHoverDistPct={onHoverDistPct}
                   corners={comparison.corners}
                   domain={[0, 100]}
-                  lines={throttleLines()}
+                  lines={pairLines("candThrottle", "refThrottle")}
                 />
               </>
             ) : null}
@@ -397,7 +377,7 @@ export function ComparePanel({
                   corners={comparison.corners}
                   domain={[0, 100]}
                   bands={absBands}
-                  lines={brakeLines()}
+                  lines={pairLines("candBrake", "refBrake")}
                 />
               </>
             ) : null}
@@ -662,9 +642,8 @@ interface ChartLine {
   color: string;
   /** Use a step curve (gear). */
   step?: boolean;
-  /** Redundant cue when cand/ref overlap (colorblind-safe). */
+  /** Slightly thicker cand vs thinner ref when both are solid. */
   strokeWidth?: number;
-  strokeDasharray?: string;
 }
 
 function Chart({
@@ -792,7 +771,6 @@ function Chart({
               stroke={l.color}
               dot={false}
               strokeWidth={l.strokeWidth ?? 1.6}
-              strokeDasharray={l.strokeDasharray}
               connectNulls={false}
               isAnimationActive={false}
             />
