@@ -65,8 +65,9 @@ const SURFACE_HOVER = "--color-surface-hover";
 const DEFAULT_SURFACE_HOVER = "#1e2432";
 
 /**
- * Deuteranopia-first palette: blue/orange pace instead of green/red;
- * cand/ref and pedals stay distinct from pace bands.
+ * Deuteranopia-first palette (Okabe–Ito inspired): strong amber mid-band vs
+ * deep-blue far band — not two oranges. Fast is teal so all three pace hues
+ * stay separable; cand/ref stay cyan/magenta.
  */
 const COLORBLIND_SAFE_COLORS: ThemeColors = {
   bg: "#0b0e14",
@@ -79,11 +80,11 @@ const COLORBLIND_SAFE_COLORS: ThemeColors = {
   textFaint: "#5b6472",
   accent: "#33bbee",
   accentStrong: "#0099bb",
-  // Pace: blue (fast) vs orange (slow); mid band yellow with higher lightness.
-  fast: "#0077bb",
-  slow: "#ee7733",
-  warning: "#ccbb44",
-  // Compare: cyan vs magenta — separable from pace blue/orange under deuteranopia.
+  // Pace: teal (fast) / strong amber (mid) / deep blue (slow) — high L+hue gaps.
+  fast: "#009e73",
+  slow: "#0072b2",
+  warning: "#ffbf00",
+  // Compare: cyan vs magenta — separable from pace teal/amber/deep-blue.
   candidate: "#33bbee",
   reference: "#aa3377",
   delta: "#bb66cc",
@@ -92,19 +93,19 @@ const COLORBLIND_SAFE_COLORS: ThemeColors = {
   chartZero: "#5b6472",
   tooltipBg: "#12161f",
   tooltipBorder: "#262d3a",
-  tireLf: "#ee7733",
-  tireRf: "#0077bb",
+  tireLf: "#0072b2",
+  tireRf: "#009e73",
   tireLr: "#aa3377",
   tireRr: "#33bbee",
-  sessionRace: "#ee7733",
+  sessionRace: "#0072b2",
   sessionQualy: "#aa3377",
-  sessionPractice: "#0077bb",
-  sessionTt: "#ccbb44",
+  sessionPractice: "#009e73",
+  sessionTt: "#ffbf00",
   mapCandidate: "#33bbee",
   mapReference: "#aa3377",
-  pedalBrake: "#ee7733",
-  pedalThrottle: "#0077bb",
-  pedalCoast: "#ccbb44",
+  pedalBrake: "#0072b2",
+  pedalThrottle: "#009e73",
+  pedalCoast: "#ffbf00",
 };
 
 const COLORBLIND_SURFACE_HOVER = "#1e2432";
@@ -160,7 +161,7 @@ export const BUILTIN_THEMES: readonly BuiltinTheme[] = [
     id: "colorblind-safe",
     name: "Colorblind safe",
     description:
-      "Optimized for red–green deficiency; Δ Best uses blue / amber / orange.",
+      "Optimized for red–green deficiency; Δ Best uses teal / strong amber / deep blue.",
     colors: COLORBLIND_SAFE_COLORS,
   },
   {

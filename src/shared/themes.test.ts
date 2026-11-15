@@ -28,11 +28,15 @@ describe("built-in themes", () => {
 
   it("uses deuteranopia-friendly pace (not red/green) for Colorblind safe", () => {
     const { colors } = resolveBuiltinTheme("colorblind-safe");
-    expect(colors.fast).toBe("#0077bb");
-    expect(colors.slow).toBe("#ee7733");
-    expect(colors.warning).toBe("#ccbb44");
+    // Strong amber mid vs deep-blue far (not two oranges); teal fast stays apart.
+    expect(colors.fast).toBe("#009e73");
+    expect(colors.slow).toBe("#0072b2");
+    expect(colors.warning).toBe("#ffbf00");
     expect(colors.fast).not.toBe(DEFAULT_THEME_COLORS.fast);
     expect(colors.slow).not.toBe(DEFAULT_THEME_COLORS.slow);
+    expect(colors.warning).not.toBe(colors.slow);
+    expect(colors.fast).not.toBe(colors.slow);
+    expect(colors.fast).not.toBe(colors.warning);
     // Cand/ref distinct from pace.
     expect(colors.candidate).not.toBe(colors.fast);
     expect(colors.reference).not.toBe(colors.slow);
@@ -71,10 +75,12 @@ describe("applyTheme", () => {
     const root = mockRoot();
     const colors = applyTheme("colorblind-safe", root);
     expect(root.dataset.theme).toBe("colorblind-safe");
-    expect(root.style.getPropertyValue("--color-fast")).toBe("#0077bb");
-    expect(root.style.getPropertyValue("--pw-pedal-brake")).toBe("#ee7733");
-    expect(root.style.getPropertyValue(THEME_CSS_VARS.fast)).toBe("#0077bb");
-    expect(colors.fast).toBe("#0077bb");
+    expect(root.style.getPropertyValue("--color-fast")).toBe("#009e73");
+    expect(root.style.getPropertyValue("--color-warning")).toBe("#ffbf00");
+    expect(root.style.getPropertyValue("--color-slow")).toBe("#0072b2");
+    expect(root.style.getPropertyValue("--pw-pedal-brake")).toBe("#0072b2");
+    expect(root.style.getPropertyValue(THEME_CSS_VARS.fast)).toBe("#009e73");
+    expect(colors.fast).toBe("#009e73");
   });
 
   it("does not set overlay Iron Man HUD vars on the root", () => {
