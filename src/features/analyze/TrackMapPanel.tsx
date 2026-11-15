@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getLapTraces } from "../../shared/api";
+import { getThemeColors } from "../../shared/themeColors";
 import { hasRacingLine } from "../../shared/trackMap";
 import type { LapSummary, TracePoint, TrackOutline } from "../../shared/types";
 import { TrackMapWidget } from "../../widgets";
@@ -97,6 +98,7 @@ export function TrackMapPanel({
 
   const widgetCandidateTraces = mode === "compare" ? lineCandidateTraces : pedalTraces;
   const widgetReferenceTraces = mode === "compare" ? referenceTraces : null;
+  const colors = getThemeColors();
 
   return (
     <div className="panel" ref={panelRef}>
@@ -144,20 +146,20 @@ export function TrackMapPanel({
         <p className="muted analyze-trackmap-legend">
           {mode === "pedal" ? (
             <>
-              <span className="swatch" style={{ background: "#ff6b6b" }} /> Brake
-              <span className="swatch" style={{ background: "#5dffa8" }} /> Throttle
-              <span className="swatch" style={{ background: "#ffb347" }} /> Coast
+              <span className="swatch" style={{ background: colors.pedalBrake }} /> Brake
+              <span className="swatch" style={{ background: colors.pedalThrottle }} /> Throttle
+              <span className="swatch" style={{ background: colors.pedalCoast }} /> Coast
               {pedalLap ? ` — L ${pedalLap.lapNumber}` : " — select a lap"}
             </>
           ) : solo || !lineCandidate ? (
             <>
-              <span className="swatch" style={{ background: "#d29922" }} /> Reference
+              <span className="swatch" style={{ background: colors.mapReference }} /> Reference
               {reference ? ` — L ${reference.lapNumber}` : null}
             </>
           ) : (
             <>
-              <span className="swatch" style={{ background: "#4aa3ff" }} /> Candidate
-              <span className="swatch" style={{ background: "#d29922" }} /> Reference
+              <span className="swatch" style={{ background: colors.mapCandidate }} /> Candidate
+              <span className="swatch" style={{ background: colors.mapReference }} /> Reference
             </>
           )}
           <span className="analyze-trackmap-help">

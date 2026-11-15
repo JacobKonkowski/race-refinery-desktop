@@ -4,7 +4,7 @@ import { cornerConsistency } from "../../shared/api";
 import { deltaClass, formatDelta, formatSpeedKph } from "../../shared/format";
 import { CornerDetail, type ConsistencyState } from "./CornerDetail";
 import { isCleanLap, matchConsistency } from "./cornerConsistency";
-import { CAND_COLOR, REF_COLOR } from "./compareColors";
+import { getThemeColors } from "./compareColors";
 
 /** Corner · Cand · Ref · Δ · bar · Entry Δ · Exit Δ · Brake · Min · Throttle */
 const COLUMNS = 10;
@@ -118,14 +118,16 @@ export function CornerTable({
     return <p className="muted">No corners detected on the reference lap.</p>;
   }
 
+  const colors = getThemeColors();
+
   return (
     <div className="corner-analysis">
       <div className="corner-header">
         <div className="chart-title">
           Corners ·{" "}
-          <span style={{ color: CAND_COLOR }}>Lap {candidate.lapNumber}</span>
+          <span style={{ color: colors.candidate }}>Lap {candidate.lapNumber}</span>
           {" vs "}
-          <span style={{ color: REF_COLOR }}>Lap {reference.lapNumber}</span>
+          <span style={{ color: colors.reference }}>Lap {reference.lapNumber}</span>
           {estimated ? " (estimated timing)" : ""}
         </div>
         <label className="corner-sort muted">
@@ -154,14 +156,14 @@ export function CornerTable({
             </th>
             <th
               className="num"
-              style={{ color: CAND_COLOR }}
+              style={{ color: colors.candidate }}
               title="Time through this corner on the candidate lap"
             >
               Lap {candidate.lapNumber}
             </th>
             <th
               className="num"
-              style={{ color: REF_COLOR }}
+              style={{ color: colors.reference }}
               title="Time through this corner on the reference lap"
             >
               Lap {reference.lapNumber}

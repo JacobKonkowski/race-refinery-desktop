@@ -1,4 +1,15 @@
-/** Lap colors shared by the compare charts and corner detail. */
-export const CAND_COLOR = "#4aa3ff";
-export const REF_COLOR = "#d29922";
-export const DELTA_COLOR = "#a371f7";
+import {
+  DEFAULT_THEME_COLORS,
+  getThemeColors,
+} from "../../shared/themeColors";
+
+export { getThemeColors };
+export type { ThemeColors } from "../../shared/themeColors";
+
+/**
+ * Default-theme compare hex (matches `tokens.css`).
+ * Prefer {@link getThemeColors} in UI so Recharts tracks the active palette.
+ */
+export const CAND_COLOR = DEFAULT_THEME_COLORS.candidate;
+export const REF_COLOR = DEFAULT_THEME_COLORS.reference;
+export const DELTA_COLOR = DEFAULT_THEME_COLORS.delta;

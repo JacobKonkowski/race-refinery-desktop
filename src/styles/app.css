@@ -639,22 +639,22 @@
 .session-item .si-type-R,
 .explorer-label .si-type-R,
 .library-sessions-data .si-type-R {
-  color: #e5484d;
+  color: var(--color-session-race);
 }
 .session-item .si-type-Q,
 .explorer-label .si-type-Q,
 .library-sessions-data .si-type-Q {
-  color: #a855f7;
+  color: var(--color-session-qualy);
 }
 .session-item .si-type-P,
 .explorer-label .si-type-P,
 .library-sessions-data .si-type-P {
-  color: #46a758;
+  color: var(--color-session-practice);
 }
 .session-item .si-type-T,
 .explorer-label .si-type-T,
 .library-sessions-data .si-type-T {
-  color: #e6b800;
+  color: var(--color-session-tt);
 }
 .session-item .si-car {
   color: var(--color-text-muted);
@@ -835,7 +835,7 @@
 
 .pill.traffic {
   background: #3a2f1a;
-  color: #e6b800;
+  color: var(--color-session-tt);
   font-size: 10px;
 }
 
@@ -1165,8 +1165,8 @@
   padding: 3px 8px;
 }
 .scatter-tip {
-  background: #12161f;
-  border: 1px solid #262d3a;
+  background: var(--color-tooltip-bg);
+  border: 1px solid var(--color-tooltip-border);
   border-radius: 6px;
   font-size: 12px;
   padding: 6px 8px;

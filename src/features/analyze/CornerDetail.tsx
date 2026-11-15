@@ -17,7 +17,7 @@ import type {
   LapSummary,
 } from "../../shared/types";
 import { formatDelta } from "../../shared/format";
-import { CAND_COLOR, REF_COLOR } from "./compareColors";
+import { getThemeColors } from "./compareColors";
 import { OFF_SCALE_MS, plottablePoints } from "./cornerConsistency";
 
 export type ConsistencyState =
@@ -79,6 +79,7 @@ export function CornerDetail({
   candidateLapId,
   referenceLapId,
 }: Props) {
+  const colors = getThemeColors();
   const missingAssists =
     corner.candidate.absMs == null || corner.reference.absMs == null;
 
@@ -89,10 +90,10 @@ export function CornerDetail({
           <thead>
             <tr>
               <th />
-              <th className="num" style={{ color: CAND_COLOR }}>
+              <th className="num" style={{ color: colors.candidate }}>
                 Candidate
               </th>
-              <th className="num" style={{ color: REF_COLOR }}>
+              <th className="num" style={{ color: colors.reference }}>
                 Reference
               </th>
             </tr>
@@ -173,6 +174,7 @@ function ConsistencyScatter({
   }
 
   const spread = state.corner.brakeSpreadM;
+  const colors = getThemeColors();
   return (
     <>
       <div className="chart-title">
@@ -182,26 +184,38 @@ function ConsistencyScatter({
       <div className="chart-wrap" style={{ height: 200 }}>
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 6, right: 12, bottom: 6, left: -8 }}>
-            <CartesianGrid stroke="#262d3a" strokeDasharray="3 3" />
+            <CartesianGrid stroke={colors.chartGrid} strokeDasharray="3 3" />
             <XAxis
               type="number"
               dataKey="x"
-              tick={{ fill: "#8b95a5", fontSize: 11 }}
+              tick={{ fill: colors.chartTick, fontSize: 11 }}
               tickFormatter={(v) => `${v > 0 ? "+" : ""}${v} m`}
             />
             <YAxis
               type="number"
               dataKey="y"
               width={52}
-              tick={{ fill: "#8b95a5", fontSize: 11 }}
+              tick={{ fill: colors.chartTick, fontSize: 11 }}
               tickFormatter={(v) => formatDelta(v)}
             />
-            <ReferenceLine x={0} stroke="#5b6472" strokeDasharray="4 4" />
-            <ReferenceLine y={0} stroke="#5b6472" strokeDasharray="4 4" />
+            <ReferenceLine x={0} stroke={colors.chartZero} strokeDasharray="4 4" />
+            <ReferenceLine y={0} stroke={colors.chartZero} strokeDasharray="4 4" />
             <Tooltip content={ScatterTip} />
-            <Scatter data={series.others} fill="#8b95a5" isAnimationActive={false} />
-            <Scatter data={series.ref} fill={REF_COLOR} isAnimationActive={false} />
-            <Scatter data={series.cand} fill={CAND_COLOR} isAnimationActive={false} />
+            <Scatter
+              data={series.others}
+              fill={colors.chartTick}
+              isAnimationActive={false}
+            />
+            <Scatter
+              data={series.ref}
+              fill={colors.reference}
+              isAnimationActive={false}
+            />
+            <Scatter
+              data={series.cand}
+              fill={colors.candidate}
+              isAnimationActive={false}
+            />
           </ScatterChart>
         </ResponsiveContainer>
       </div>
