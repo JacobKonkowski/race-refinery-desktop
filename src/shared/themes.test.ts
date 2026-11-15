@@ -46,6 +46,15 @@ describe("built-in themes", () => {
     expect(colors.reference).not.toBe(colors.warning);
     expect(colors.delta).not.toBe(colors.candidate);
     expect(colors.delta).not.toBe(colors.reference);
+    // Session chips independent of cand/ref (not aliased).
+    expect(colors.sessionRace).toBe("#e5484d");
+    expect(colors.sessionQualy).toBe("#a855f7");
+    expect(colors.sessionPractice).toBe("#46a758");
+    expect(colors.sessionTt).toBe("#e6b800");
+    expect(colors.sessionRace).not.toBe(colors.candidate);
+    expect(colors.sessionRace).not.toBe(colors.reference);
+    expect(colors.sessionQualy).not.toBe(colors.candidate);
+    expect(colors.sessionQualy).not.toBe(colors.reference);
     // Chart chrome brighter than default dark borders.
     expect(colors.chartGrid).toBe("#5a6578");
     expect(colors.chartTick).toBe("#c5ced9");

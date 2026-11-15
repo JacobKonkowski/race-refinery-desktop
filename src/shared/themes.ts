@@ -98,10 +98,11 @@ const COLORBLIND_SAFE_COLORS: ThemeColors = {
   tireRf: "#009e73",
   tireLr: "#fff200",
   tireRr: "#00aaff",
-  sessionRace: "#0072b2",
-  sessionQualy: "#00aaff",
-  sessionPractice: "#009e73",
-  sessionTt: "#ffbf00",
+  // Session chips stay independent of cand/ref (and pace) swaps.
+  sessionRace: "#e5484d",
+  sessionQualy: "#a855f7",
+  sessionPractice: "#46a758",
+  sessionTt: "#e6b800",
   mapCandidate: "#00aaff",
   mapReference: "#fff200",
   // Pedals: bright cyan vs orange (not two blues) — map + brake/throttle charts.
