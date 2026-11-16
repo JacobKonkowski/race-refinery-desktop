@@ -2,8 +2,9 @@
  * Startup handoff: apply the persisted theme before React mounts, then fade
  * the HTML splash out after the first paint.
  *
- * The native window stays visible from process start (dark backgroundColor +
- * static splash). No artificial hold and no delayed show().
+ * Rust keeps the main window hidden until page-load finishes so the first
+ * visible frame is this splash (not an empty black native window). No
+ * artificial minimum hold after that — dismiss as soon as boot work finishes.
  */
 import { getSettings } from "./shared/api";
 import { applyTheme, DEFAULT_THEME_ID } from "./shared/themes";

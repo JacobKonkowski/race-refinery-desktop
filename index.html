@@ -46,7 +46,8 @@
         flex-direction: column;
         align-items: center;
         gap: 18px;
-        animation: boot-rise 480ms ease-out both;
+        /* Keep brand readable immediately; only nudge motion, don't fade from empty. */
+        animation: boot-rise 420ms ease-out both;
       }
 
       .boot-splash-icon {
@@ -98,11 +99,9 @@
 
       @keyframes boot-rise {
         from {
-          opacity: 0;
-          transform: translateY(10px);
+          transform: translateY(8px);
         }
         to {
-          opacity: 1;
           transform: translateY(0);
         }
       }
