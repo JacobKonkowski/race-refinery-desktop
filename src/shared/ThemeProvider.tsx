@@ -43,7 +43,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setColors(nextColors);
     });
 
-    // Initial paint uses Default from tokens.css; sync from persisted settings.
+    // Boot already applied the persisted theme; re-sync for StrictMode / late IPC.
     getSettings()
       .then((s) => {
         if (cancelled) return;
