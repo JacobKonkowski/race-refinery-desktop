@@ -5,7 +5,6 @@ import {
   dismissBootSplash,
   prepareInitialTheme,
   revealMainWindow,
-  waitMinSplash,
 } from "./boot";
 import "./styles/tokens.css";
 import "./styles/app.css";
@@ -14,7 +13,8 @@ async function boot() {
   // Splash HTML is already painted; show the native window on that frame.
   await revealMainWindow();
 
-  await Promise.all([prepareInitialTheme(), waitMinSplash()]);
+  // Stay on splash only while real boot work runs (settings → theme vars).
+  await prepareInitialTheme();
 
   ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <React.StrictMode>

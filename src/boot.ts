@@ -1,13 +1,12 @@
 /**
  * Startup handoff: reveal the main window on the HTML splash, apply the
  * persisted theme before React mounts, then fade the splash out.
+ *
+ * No artificial minimum hold — the splash stays only while boot work runs.
  */
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getSettings } from "./shared/api";
 import { applyTheme, DEFAULT_THEME_ID } from "./shared/themes";
-
-/** Hold long enough to read as a loading moment (was 450ms — too easy to miss). */
-const MIN_SPLASH_MS = 1500;
 
 export async function revealMainWindow(): Promise<void> {
   try {
@@ -25,10 +24,6 @@ export async function prepareInitialTheme(): Promise<void> {
   } catch {
     applyTheme(DEFAULT_THEME_ID);
   }
-}
-
-export function waitMinSplash(ms = MIN_SPLASH_MS): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /** Fade out and remove `#boot-splash` after the first React paint. */
