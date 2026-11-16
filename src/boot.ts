@@ -6,8 +6,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getSettings } from "./shared/api";
 import { applyTheme, DEFAULT_THEME_ID } from "./shared/themes";
 
-/** Short hold so cold start still reads as an intentional loading moment. */
-const MIN_SPLASH_MS = 450;
+/** Hold long enough to read as a loading moment (was 450ms — too easy to miss). */
+const MIN_SPLASH_MS = 1500;
 
 export async function revealMainWindow(): Promise<void> {
   try {
@@ -46,5 +46,5 @@ export function dismissBootSplash(): void {
   };
 
   splash.addEventListener("transitionend", remove, { once: true });
-  window.setTimeout(remove, 400);
+  window.setTimeout(remove, 500);
 }
