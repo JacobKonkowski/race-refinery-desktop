@@ -1,20 +1,12 @@
 /**
- * Startup handoff: reveal the main window on the HTML splash, apply the
- * persisted theme before React mounts, then fade the splash out.
+ * Startup handoff: apply the persisted theme before React mounts, then fade
+ * the HTML splash out after the first paint.
  *
- * No artificial minimum hold — the splash stays only while boot work runs.
+ * The native window stays visible from process start (dark backgroundColor +
+ * static splash). No artificial hold and no delayed show().
  */
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getSettings } from "./shared/api";
 import { applyTheme, DEFAULT_THEME_ID } from "./shared/themes";
-
-export async function revealMainWindow(): Promise<void> {
-  try {
-    await getCurrentWindow().show();
-  } catch {
-    // Browser / non-Tauri preview — ignore.
-  }
-}
 
 /** Load settings and paint CSS vars before the shell mounts (avoids theme hop). */
 export async function prepareInitialTheme(): Promise<void> {
