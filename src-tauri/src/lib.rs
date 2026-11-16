@@ -18,10 +18,17 @@ pub use race_refinery_storage as storage;
 pub use race_refinery_telemetry as telemetry;
 pub use race_refinery_vr as vr;
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use crate::commands::AppState;
 use race_refinery_ingest::start_watcher;
+use tauri::webview::PageLoadEvent;
+use tauri::Manager;
+
+/// Failsafe so a missed page-load event never leaves the main window stuck hidden.
+const MAIN_WINDOW_SHOW_FALLBACK: Duration = Duration::from_secs(3);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -34,11 +41,28 @@ pub fn run() {
         .try_init();
 
     let state = Arc::new(AppState::new().expect("failed to initialize database"));
+    // Keep the main window hidden until the HTML splash has loaded — showing
+    // earlier paints only the native backgroundColor (a long black wait in
+    // `tauri:dev` while WebView/Vite catch up).
+    let main_revealed = Arc::new(AtomicBool::new(false));
+    let main_revealed_on_load = main_revealed.clone();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(recenter::hotkey_plugin())
         .manage(state.clone())
+        .on_page_load(move |webview, payload| {
+            if webview.label() != "main" {
+                return;
+            }
+            if !matches!(payload.event(), PageLoadEvent::Finished) {
+                return;
+            }
+            if main_revealed_on_load.swap(true, Ordering::SeqCst) {
+                return;
+            }
+            let _ = webview.show();
+        })
         .setup(move |app| {
             #[cfg(feature = "updater")]
             {
@@ -50,6 +74,16 @@ pub fn run() {
             }
             start_watcher(app.handle().clone(), state.import.clone());
             recenter::init(app.handle(), &state);
+
+            if let Some(main) = app.get_webview_window("main") {
+                let revealed = main_revealed.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(MAIN_WINDOW_SHOW_FALLBACK).await;
+                    if !revealed.swap(true, Ordering::SeqCst) {
+                        let _ = main.show();
+                    }
+                });
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
