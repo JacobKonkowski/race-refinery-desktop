@@ -127,11 +127,7 @@ impl RaceRefineryMcp {
         Parameters(args): Parameters<ListSessionsArgs>,
     ) -> Result<CallToolResult, McpError> {
         let limit = args.limit.unwrap_or(50).clamp(1, MAX_SESSIONS as u32) as usize;
-        let sessions = self
-            .db
-            .lock()
-            .list_sessions()
-            .map_err(Self::db_err)?;
+        let sessions = self.db.lock().list_sessions().map_err(Self::db_err)?;
         let filtered: Vec<SessionSummary> = sessions
             .into_iter()
             .filter(|s| session_matches(s, &args.track, &args.car, &args.since, &args.until))
@@ -192,10 +188,7 @@ impl RaceRefineryMcp {
     #[tool(
         description = "Get one lap's metadata and sector times (same fields as the session lap table). Times are milliseconds."
     )]
-    fn get_lap(
-        &self,
-        Parameters(args): Parameters<LapIdArgs>,
-    ) -> Result<CallToolResult, McpError> {
+    fn get_lap(&self, Parameters(args): Parameters<LapIdArgs>) -> Result<CallToolResult, McpError> {
         let laps = self
             .db
             .lock()
@@ -210,9 +203,7 @@ impl RaceRefineryMcp {
         }
     }
 
-    #[tool(
-        description = "Alias of get_lap: one lap summary with sectors. Times are milliseconds."
-    )]
+    #[tool(description = "Alias of get_lap: one lap summary with sectors. Times are milliseconds.")]
     fn get_lap_summary(
         &self,
         Parameters(args): Parameters<LapIdArgs>,
@@ -283,7 +274,9 @@ impl RaceRefineryMcp {
             .collect::<Result<Vec<_>, _>>()?;
         drop(db);
 
-        fn input(lap: &(i64, Option<f64>, Vec<race_refinery_analysis::TracePoint>)) -> ConsistencyLap<'_> {
+        fn input(
+            lap: &(i64, Option<f64>, Vec<race_refinery_analysis::TracePoint>),
+        ) -> ConsistencyLap<'_> {
             ConsistencyLap {
                 lap_id: lap.0,
                 lap_time_ms: lap.1,
@@ -365,10 +358,22 @@ mod tests {
 
     #[test]
     fn date_bounds_work_on_rfc3339() {
-        assert!(session_date_on_or_after("2026-11-15T18:00:00Z", "2026-11-15"));
-        assert!(!session_date_on_or_after("2026-11-14T18:00:00Z", "2026-11-15"));
-        assert!(session_date_on_or_before("2026-11-15T18:00:00Z", "2026-11-15"));
-        assert!(!session_date_on_or_before("2026-11-16T01:00:00Z", "2026-11-15"));
+        assert!(session_date_on_or_after(
+            "2026-11-15T18:00:00Z",
+            "2026-11-15"
+        ));
+        assert!(!session_date_on_or_after(
+            "2026-11-14T18:00:00Z",
+            "2026-11-15"
+        ));
+        assert!(session_date_on_or_before(
+            "2026-11-15T18:00:00Z",
+            "2026-11-15"
+        ));
+        assert!(!session_date_on_or_before(
+            "2026-11-16T01:00:00Z",
+            "2026-11-15"
+        ));
     }
 
     #[test]
