@@ -20,6 +20,7 @@ import type {
   LapTrace,
   LiveSnapshot,
   LiveStatus,
+  McpStatus,
   MonitorOverlayStatus,
   NativeVrStatus,
   CategoryMatch,
@@ -229,6 +230,10 @@ export async function patchSettings(patch: Partial<AppSettings>): Promise<AppSet
 
 export function onSettingsChanged(callback: (settings: AppSettings) => void) {
   return listen<AppSettings>("settings-changed", (event) => callback(event.payload));
+}
+
+export async function getMcpStatus(): Promise<McpStatus> {
+  return invoke("get_mcp_status");
 }
 
 /* --- Audio coach --- */
