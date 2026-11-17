@@ -95,33 +95,39 @@ pub fn normalize_max_points(max_points: Option<u32>) -> Result<u32, String> {
     Ok(n)
 }
 
-pub fn build_lap_traces(
-    lap_id: i64,
-    session_id: Option<i64>,
-    lap_number: Option<i32>,
-    points: &[TracePoint],
-    channels: &[String],
-    max_points: u32,
-    start_dist_pct: Option<f64>,
-    end_dist_pct: Option<f64>,
-) -> Result<LapTracesResult, String> {
-    let (start, end) = resolve_window(start_dist_pct, end_dist_pct)?;
-    let windowed: Vec<&TracePoint> = points
+/// Inputs for [`build_lap_traces`] (kept as a struct for clippy arg limits).
+#[derive(Debug, Clone)]
+pub struct BuildLapTracesArgs<'a> {
+    pub lap_id: i64,
+    pub session_id: Option<i64>,
+    pub lap_number: Option<i32>,
+    pub points: &'a [TracePoint],
+    pub channels: &'a [String],
+    pub max_points: u32,
+    pub start_dist_pct: Option<f64>,
+    pub end_dist_pct: Option<f64>,
+}
+
+pub fn build_lap_traces(args: BuildLapTracesArgs<'_>) -> Result<LapTracesResult, String> {
+    let (start, end) = resolve_window(args.start_dist_pct, args.end_dist_pct)?;
+    let windowed: Vec<&TracePoint> = args
+        .points
         .iter()
         .filter(|p| p.dist_pct >= start && p.dist_pct <= end)
         .collect();
     let source_point_count = windowed.len();
-    let sampled = downsample(&windowed, max_points as usize);
+    let sampled = downsample(&windowed, args.max_points as usize);
     let point_count = sampled.len();
 
-    let sample_budget = point_count.saturating_mul(channels.len());
+    let sample_budget = point_count.saturating_mul(args.channels.len());
     if sample_budget > HARD_MAX_SAMPLES {
         return Err(format!(
             "request would emit {sample_budget} samples (max {HARD_MAX_SAMPLES}); reduce channels or maxPoints"
         ));
     }
 
-    let units: Vec<ChannelUnit> = channels
+    let units: Vec<ChannelUnit> = args
+        .channels
         .iter()
         .map(|ch| ChannelUnit {
             channel: ch.clone(),
@@ -130,7 +136,8 @@ pub fn build_lap_traces(
         .collect();
 
     let dist_pct: Vec<f64> = sampled.iter().map(|p| p.dist_pct).collect();
-    let series: Vec<Vec<Option<f64>>> = channels
+    let series: Vec<Vec<Option<f64>>> = args
+        .channels
         .iter()
         .map(|ch| sampled.iter().map(|p| channel_value(p, ch)).collect())
         .collect();
@@ -142,16 +149,16 @@ pub fn build_lap_traces(
     };
 
     Ok(LapTracesResult {
-        lap_id,
-        session_id,
-        lap_number,
-        channels: channels.to_vec(),
+        lap_id: args.lap_id,
+        session_id: args.session_id,
+        lap_number: args.lap_number,
+        channels: args.channels.to_vec(),
         units,
         start_dist_pct: start,
         end_dist_pct: end,
         source_point_count,
         point_count,
-        max_points,
+        max_points: args.max_points,
         downsample,
         dist_pct,
         series,
@@ -289,16 +296,16 @@ mod tests {
             .map(|i| pt(i as f64 / 999.0, i as f64 / 999.0, 0.0))
             .collect();
         let channels = vec!["brake".into()];
-        let out = build_lap_traces(
-            1,
-            Some(2),
-            Some(3),
-            &points,
-            &channels,
-            10,
-            Some(0.2),
-            Some(0.4),
-        )
+        let out = build_lap_traces(BuildLapTracesArgs {
+            lap_id: 1,
+            session_id: Some(2),
+            lap_number: Some(3),
+            points: &points,
+            channels: &channels,
+            max_points: 10,
+            start_dist_pct: Some(0.2),
+            end_dist_pct: Some(0.4),
+        })
         .unwrap();
         assert_eq!(out.point_count, 10);
         assert!(out.start_dist_pct >= 0.19 && out.end_dist_pct <= 0.41);

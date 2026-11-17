@@ -17,8 +17,8 @@ use serde::Deserialize;
 
 use crate::summary::{json_text, summarize_compare, summarize_consistency};
 use crate::traces::{
-    build_lap_traces, normalize_channels, normalize_max_points, ALLOWED_CHANNELS,
-    DEFAULT_MAX_POINTS, HARD_MAX_POINTS,
+    build_lap_traces, normalize_channels, normalize_max_points, BuildLapTracesArgs,
+    ALLOWED_CHANNELS, DEFAULT_MAX_POINTS, HARD_MAX_POINTS,
 };
 
 /// Default localhost port shown in Settings and used when `mcpPort` is unset/0.
@@ -386,16 +386,16 @@ impl RaceRefineryMcp {
             (args.start_dist_pct, args.end_dist_pct)
         };
 
-        let result = build_lap_traces(
-            args.lap_id,
-            Some(meta.session_id),
-            Some(meta.lap.lap_number),
-            &points,
-            &channels,
+        let result = build_lap_traces(BuildLapTracesArgs {
+            lap_id: args.lap_id,
+            session_id: Some(meta.session_id),
+            lap_number: Some(meta.lap.lap_number),
+            points: &points,
+            channels: &channels,
             max_points,
             start_dist_pct,
             end_dist_pct,
-        )
+        })
         .map_err(|e| McpError::invalid_params(e, None))?;
         self.ok_json(&result)
     }
