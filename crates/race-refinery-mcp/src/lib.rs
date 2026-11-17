@@ -5,6 +5,7 @@
 
 mod server;
 mod summary;
+mod traces;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
