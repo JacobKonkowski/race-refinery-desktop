@@ -16,6 +16,10 @@ use rmcp::{
 use serde::Deserialize;
 
 use crate::summary::{json_text, summarize_compare, summarize_consistency};
+use crate::traces::{
+    build_lap_traces, normalize_channels, normalize_max_points, BuildLapTracesArgs,
+    ALLOWED_CHANNELS, DEFAULT_MAX_POINTS, HARD_MAX_POINTS,
+};
 
 /// Default localhost port shown in Settings and used when `mcpPort` is unset/0.
 pub const DEFAULT_MCP_PORT: u16 = 7847;
@@ -99,6 +103,27 @@ struct ConsistencyArgs {
     reference_lap_id: i64,
     /// Laps to measure through those corners (include reference if desired).
     lap_ids: Vec<i64>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "camelCase")]
+struct LapTracesArgs {
+    lap_id: i64,
+    /// Allowlisted channel names (default: brake, throttle). Case-insensitive.
+    #[serde(default)]
+    channels: Option<Vec<String>>,
+    /// Max samples per channel after downsample (default 200, max 500).
+    #[serde(default)]
+    max_points: Option<u32>,
+    /// Inclusive lap-distance window start in [0, 1]. Ignored when `cornerNumber` is set.
+    #[serde(default)]
+    start_dist_pct: Option<f64>,
+    /// Inclusive lap-distance window end in [0, 1]. Ignored when `cornerNumber` is set.
+    #[serde(default)]
+    end_dist_pct: Option<f64>,
+    /// 1-based corner from this lap's speed-detected corners (entry→exit window).
+    #[serde(default)]
+    corner_number: Option<u32>,
 }
 
 #[tool_router]
@@ -290,6 +315,90 @@ impl RaceRefineryMcp {
         let corners = run_consistency(&input(&reference), &laps);
         self.ok_json(&summarize_consistency(corners))
     }
+
+    #[tool(
+        description = "Downsampled channel traces for one lap (pedal/line shape). Default channels brake+throttle; allowlist includes speed, steering, gear, clutch, rpm, lat/long accel, yaw, ABS, elapsedMs, and raw pedals. Window is whole lap, startDistPct/endDistPct, or cornerNumber (1-based speed-detected corner). maxPoints defaults to 200 (hard max 500). Returns distPct + parallel series, pointCount, downsample, units, lap/session ids."
+    )]
+    fn get_lap_traces(
+        &self,
+        Parameters(args): Parameters<LapTracesArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let channels = normalize_channels(args.channels).map_err(|e| {
+            McpError::invalid_params(
+                format!("{e} (allowed: {})", ALLOWED_CHANNELS.join(", ")),
+                None,
+            )
+        })?;
+        let max_points = normalize_max_points(args.max_points).map_err(|e| {
+            McpError::invalid_params(
+                format!("{e} (default {DEFAULT_MAX_POINTS}, hard max {HARD_MAX_POINTS})"),
+                None,
+            )
+        })?;
+
+        let db = self.db.lock();
+        let meta = db
+            .load_laps(&[args.lap_id])
+            .map_err(Self::db_err)?
+            .into_iter()
+            .next()
+            .ok_or_else(|| {
+                McpError::invalid_params(format!("lap {} not found", args.lap_id), None)
+            })?;
+        let (lap_time_ms, sectors, points, traffic) =
+            db.get_lap_compare_data(args.lap_id).map_err(Self::db_err)?;
+        drop(db);
+
+        if points.is_empty() {
+            return Err(McpError::invalid_params(
+                format!("lap {} has no stored traces", args.lap_id),
+                None,
+            ));
+        }
+
+        let (start_dist_pct, end_dist_pct) = if let Some(corner_number) = args.corner_number {
+            if corner_number == 0 {
+                return Err(McpError::invalid_params(
+                    "cornerNumber is 1-based (must be >= 1)",
+                    None,
+                ));
+            }
+            let input = CompareInput {
+                lap_id: args.lap_id,
+                lap_time_ms,
+                sectors: &sectors,
+                traces: &points,
+                traffic: &traffic,
+            };
+            let corners = run_compare(&input, &input).corners;
+            let Some(corner) = corners.iter().find(|c| c.number == corner_number) else {
+                let available: Vec<u32> = corners.iter().map(|c| c.number).collect();
+                return Err(McpError::invalid_params(
+                    format!(
+                        "corner {corner_number} not found on lap {}; available: {available:?}",
+                        args.lap_id
+                    ),
+                    None,
+                ));
+            };
+            (Some(corner.entry_pct), Some(corner.exit_pct))
+        } else {
+            (args.start_dist_pct, args.end_dist_pct)
+        };
+
+        let result = build_lap_traces(BuildLapTracesArgs {
+            lap_id: args.lap_id,
+            session_id: Some(meta.session_id),
+            lap_number: Some(meta.lap.lap_number),
+            points: &points,
+            channels: &channels,
+            max_points,
+            start_dist_pct,
+            end_dist_pct,
+        })
+        .map_err(|e| McpError::invalid_params(e, None))?;
+        self.ok_json(&result)
+    }
 }
 
 #[tool_handler]
@@ -300,6 +409,7 @@ impl ServerHandler for RaceRefineryMcp {
                 "Race Refinery local read-only tools for imported iRacing sessions and laps. \
                  Prefer paceEligible laps for pace questions. Times are milliseconds unless a field name says otherwise. \
                  compare_laps includes trailBrakeMs and corner deltas — cite those numbers when advising technique. \
+                 get_lap_traces returns downsampled pedal/line series (default brake+throttle, max 200 points) for shape questions. \
                  No write tools; no live telemetry.",
             )
             .with_server_info(Implementation::new("race-refinery", env!("CARGO_PKG_VERSION")))

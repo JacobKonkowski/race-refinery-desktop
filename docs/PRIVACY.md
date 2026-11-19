@@ -25,7 +25,7 @@ Settings includes an **MCP** toggle that is **off by default**. When enabled, Ra
 binds a read-only MCP HTTP endpoint on `127.0.0.1` only (shown in Settings when listening).
 Nothing listens while the toggle is off.
 
-- Tools expose local session / lap / compare / technique / consistency data already in RR
+- Tools expose local session / lap / compare / technique / consistency / downsampled trace data already in RR
 - No shared secret: access control is the Settings toggle plus the localhost bind
 - The app does **not** upload telemetry for MCP; any AI host you connect (e.g. Cursor) may
   see tool results under that host's own settings — that is outside Race Refinery
