@@ -56,6 +56,8 @@ Overlay layout settings configure a **shared widget catalog** (coach / standings
 
 Persisted via `get_settings` / `save_settings_cmd` (full write) or `patch_settings_cmd` (merge top-level keys). The **Settings** page covers VR HUD mode, per-widget VR placement, recenter bindings (keyboard / wheel button), and the audio coach: voice pack (picker with Spotter / Engineer progress, clone, zip import / export, WAV-folder import, linked folders), volume, pause between calls, low-fuel threshold, chatter level, fuel-call margin, radio beep, and every callout category. The Live page keeps quick toggles for common audio categories, shows the active pack, and has monitor overlay and VR actions (including Recenter and coach VR size/opacity/height sliders).
 
+**MCP (Cursor)** — optional, **off by default**. When enabled, a read-only Streamable HTTP MCP server listens on `127.0.0.1` (default port `7847`, path `/mcp`) so Cursor can query local sessions/laps/compare/technique/consistency. Settings shows the connection URL while listening; nothing binds while the toggle is off. See [PRIVACY.md](PRIVACY.md).
+
 ## Voice Studio
 
 Records and checks voice packs for the coach (see [VOICE_PACKS.md](VOICE_PACKS.md)).

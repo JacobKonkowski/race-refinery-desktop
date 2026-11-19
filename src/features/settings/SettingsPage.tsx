@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   captureControllerButton,
+  getMcpStatus,
   getSettings,
   recenterVr,
   saveSettings,
@@ -11,7 +12,7 @@ import { Slider } from "../../shared/Slider";
 import { showToast } from "../../shared/toast";
 import { applyTheme, BUILTIN_THEMES, DEFAULT_THEME_ID } from "../../shared/themes";
 import { defaultOverlayLayout } from "../../shared/types";
-import type { AppSettings, WidgetPlacement } from "../../shared/types";
+import type { AppSettings, McpStatus, WidgetPlacement } from "../../shared/types";
 import { coachTestMessage } from "../../shared/voicePacks";
 import { VoicePackSection } from "./VoicePackSection";
 
@@ -75,11 +76,18 @@ const meters = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(2)} m`;
 
 export function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [mcpStatus, setMcpStatus] = useState<McpStatus | null>(null);
   const [widgetIndex, setWidgetIndex] = useState(0);
   const [capturingKey, setCapturingKey] = useState(false);
   const [capturingButton, setCapturingButton] = useState(false);
   const settingsRef = useRef<AppSettings | null>(null);
   const saveTimer = useRef<number | null>(null);
+
+  const refreshMcpStatus = useCallback(() => {
+    getMcpStatus()
+      .then(setMcpStatus)
+      .catch(() => setMcpStatus(null));
+  }, []);
 
   useEffect(() => {
     getSettings()
@@ -88,10 +96,11 @@ export function SettingsPage() {
         setSettings(s);
       })
       .catch((e) => showToast(`Could not load settings: ${String(e)}`, "error"));
+    refreshMcpStatus();
     return () => {
       if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
     };
-  }, []);
+  }, [refreshMcpStatus]);
 
   const apply = (next: AppSettings) => {
     settingsRef.current = next;
@@ -104,7 +113,9 @@ export function SettingsPage() {
     saveTimer.current = window.setTimeout(() => {
       const latest = settingsRef.current;
       if (!latest) return;
-      saveSettings(latest).catch((e) => showToast(`Settings save failed: ${String(e)}`, "error"));
+      saveSettings(latest)
+        .then(() => refreshMcpStatus())
+        .catch((e) => showToast(`Settings save failed: ${String(e)}`, "error"));
     }, 150);
   };
 
@@ -213,6 +224,51 @@ export function SettingsPage() {
 
   return (
     <div className="settings-page">
+      <div className="panel">
+        <div className="panel-header">
+          <h2>MCP (Cursor)</h2>
+        </div>
+        <div className="panel-body">
+          <label className="toggle-row">
+            <input
+              type="checkbox"
+              checked={Boolean(settings.mcpEnabled)}
+              onChange={(e) => update({ mcpEnabled: e.target.checked })}
+            />
+            <span>Expose local session data to Cursor via MCP</span>
+          </label>
+          <p className="muted small">
+            Off by default. When on, Race Refinery listens only on this PC
+            (`127.0.0.1`) with read-only tools — no shared secret, no cloud upload
+            from the app. Cursor (or another MCP client) can read your imported
+            sessions and lap analysis. Leave off unless you are using it.
+          </p>
+          {settings.mcpEnabled ? (
+            <div className="settings-section">
+              <p className="muted small">
+                {mcpStatus?.listening && mcpStatus.url
+                  ? `Listening at ${mcpStatus.url}`
+                  : mcpStatus?.message || "Starting…"}
+              </p>
+              {mcpStatus?.url ? (
+                <>
+                  <p className="muted small">Add this to Cursor MCP settings (`~/.cursor/mcp.json`):</p>
+                  <pre className="settings-code-block">{`{
+  "mcpServers": {
+    "race-refinery": {
+      "url": "${mcpStatus.url}"
+    }
+  }
+}`}</pre>
+                </>
+              ) : null}
+            </div>
+          ) : (
+            <p className="muted small">Nothing is listening while this toggle is off.</p>
+          )}
+        </div>
+      </div>
+
       <div className="panel">
         <div className="panel-header">
           <h2>Appearance</h2>

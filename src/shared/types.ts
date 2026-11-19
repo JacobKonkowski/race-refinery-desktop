@@ -579,6 +579,24 @@ export interface AppSettings {
   audioVoicePushToTalkKey?: string;
   /** Active UI theme id (`default`, `colorblind-safe`, `high-contrast`, or a user theme slug). */
   themeId: string;
+  /**
+   * When true, Race Refinery listens on localhost for a read-only MCP server
+   * so Cursor (or another MCP client) can query local session/lap data.
+   * Default off — nothing listens until enabled.
+   */
+  mcpEnabled: boolean;
+  /** Localhost TCP port for the MCP `/mcp` endpoint. Default 7847. */
+  mcpPort: number;
+}
+
+/** Live status of the optional in-app MCP server. */
+export interface McpStatus {
+  enabled: boolean;
+  listening: boolean;
+  port: number;
+  /** Cursor-facing URL when listening, e.g. `http://127.0.0.1:7847/mcp`. */
+  url: string | null;
+  message: string;
 }
 
 export interface AudioCoachStatus {
