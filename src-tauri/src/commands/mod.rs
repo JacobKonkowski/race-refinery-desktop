@@ -24,6 +24,7 @@ use crate::ingest::{
     validate_import_path, ImportHandles,
 };
 use crate::live::{LiveService, LiveSnapshot, LiveStatus, PostSessionImportFn};
+use crate::mcp::{McpService, McpStatus, DEFAULT_MCP_PORT};
 use crate::monitor::MonitorOverlayService;
 use crate::settings::{load_settings, save_settings, AppSettings, ControllerBinding};
 use crate::storage::{
@@ -39,6 +40,7 @@ pub struct AppState {
     pub audio: Arc<AudioCoachService>,
     pub vr: Arc<VrOverlayService>,
     pub monitor: Arc<MonitorOverlayService>,
+    pub mcp: Arc<McpService>,
     pub settings: Mutex<AppSettings>,
     /// Controller watcher for the recenter button; set once the main window exists.
     pub input: OnceLock<InputWatcher>,
@@ -65,11 +67,30 @@ impl AppState {
             audio: Arc::new(AudioCoachService::new()),
             vr: Arc::new(VrOverlayService::new()),
             monitor: Arc::new(MonitorOverlayService::new()),
+            mcp: Arc::new(McpService::new()),
             settings: Mutex::new(load_settings()),
             input: OnceLock::new(),
             recenter_hotkey: Mutex::new(None),
         })
     }
+}
+
+/// Resolve the effective MCP listen port (`0` → default).
+pub(crate) fn mcp_listen_port(settings: &AppSettings) -> u16 {
+    if settings.mcp_port == 0 {
+        DEFAULT_MCP_PORT
+    } else {
+        settings.mcp_port
+    }
+}
+
+/// Start or stop the localhost MCP server to match Settings.
+pub(crate) fn sync_mcp_server(state: &AppState, settings: &AppSettings) {
+    state.mcp.sync(
+        settings.mcp_enabled,
+        mcp_listen_port(settings),
+        state.import.db.clone(),
+    );
 }
 
 #[tauri::command]
@@ -496,9 +517,15 @@ pub(crate) fn persist_settings(
     }
     save_settings(&settings).map_err(|e| e.to_string())?;
     crate::recenter::apply_controller(state, &settings);
+    sync_mcp_server(state, &settings);
     *state.settings.lock() = settings.clone();
     let _ = app.emit("settings-changed", settings.clone());
     Ok(settings)
+}
+
+#[tauri::command]
+pub fn get_mcp_status(state: State<'_, Arc<AppState>>) -> McpStatus {
+    state.mcp.status()
 }
 
 #[tauri::command]

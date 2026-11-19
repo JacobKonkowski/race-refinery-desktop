@@ -244,6 +244,13 @@ pub struct AppSettings {
     /// Active UI theme id (`default`, `colorblind-safe`, `high-contrast`, or a user theme slug).
     #[serde(default = "default_theme_id")]
     pub theme_id: String,
+    /// When true, the in-app MCP server listens on localhost (read-only tools).
+    #[serde(default)]
+    pub mcp_enabled: bool,
+    /// Localhost TCP port for the MCP Streamable HTTP endpoint (`/mcp`).
+    /// `0` means use the built-in default (7847).
+    #[serde(default = "default_mcp_port")]
+    pub mcp_port: u16,
 }
 
 fn default_true() -> bool {
@@ -256,6 +263,10 @@ fn default_fuel_sensitivity() -> String {
 
 fn default_theme_id() -> String {
     "default".into()
+}
+
+fn default_mcp_port() -> u16 {
+    7847
 }
 
 impl Default for AppSettings {
@@ -302,6 +313,8 @@ impl Default for AppSettings {
             audio_voice_commands_enabled: false,
             audio_voice_push_to_talk_key: String::new(),
             theme_id: default_theme_id(),
+            mcp_enabled: false,
+            mcp_port: default_mcp_port(),
         }
     }
 }
@@ -503,6 +516,29 @@ mod tests {
         assert_eq!(json["themeId"], "colorblind-safe");
         let back: AppSettings = serde_json::from_value(json).unwrap();
         assert_eq!(back.theme_id, "colorblind-safe");
+    }
+
+    #[test]
+    fn mcp_defaults_off_with_fixed_port() {
+        let value = serde_json::json!({ "audioCoachVolume": 0.5 });
+        let settings: AppSettings = serde_json::from_value(value).expect("deserialize");
+        assert!(!settings.mcp_enabled);
+        assert_eq!(settings.mcp_port, 7847);
+    }
+
+    #[test]
+    fn mcp_settings_round_trip() {
+        let settings = AppSettings {
+            mcp_enabled: true,
+            mcp_port: 9001,
+            ..AppSettings::default()
+        };
+        let json = serde_json::to_value(&settings).unwrap();
+        assert_eq!(json["mcpEnabled"], true);
+        assert_eq!(json["mcpPort"], 9001);
+        let back: AppSettings = serde_json::from_value(json).unwrap();
+        assert!(back.mcp_enabled);
+        assert_eq!(back.mcp_port, 9001);
     }
 
     #[test]

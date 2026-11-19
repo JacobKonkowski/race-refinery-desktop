@@ -11,6 +11,7 @@ members = [
     "crates/race-refinery-vr",
     "crates/race-refinery-monitor",
     "crates/race-refinery-input",
+    "crates/race-refinery-mcp",
     "src-tauri",
 ]
 

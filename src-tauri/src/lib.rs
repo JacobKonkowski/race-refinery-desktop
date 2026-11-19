@@ -2,8 +2,8 @@
 //!
 //! Composition root: domain crates (`race_refinery_telemetry`, `race_refinery_analysis`,
 //! `race_refinery_ingest`, `race_refinery_storage`, `race_refinery_live`, `race_refinery_audio`,
-//! `race_refinery_vr`, `race_refinery_settings`, `race_refinery_monitor`) plus [`commands`] IPC.
-//! Domains must not depend on `commands`.
+//! `race_refinery_vr`, `race_refinery_settings`, `race_refinery_monitor`, `race_refinery_mcp`)
+//! plus [`commands`] IPC. Domains must not depend on `commands`.
 
 pub mod commands;
 mod recenter;
@@ -12,6 +12,7 @@ pub use race_refinery_analysis as analysis;
 pub use race_refinery_audio as audio;
 pub use race_refinery_ingest as ingest;
 pub use race_refinery_live as live;
+pub use race_refinery_mcp as mcp;
 pub use race_refinery_monitor as monitor;
 pub use race_refinery_settings as settings;
 pub use race_refinery_storage as storage;
@@ -74,6 +75,10 @@ pub fn run() {
             }
             start_watcher(app.handle().clone(), state.import.clone());
             recenter::init(app.handle(), &state);
+            {
+                let settings = state.settings.lock().clone();
+                commands::sync_mcp_server(&state, &settings);
+            }
 
             if let Some(main) = app.get_webview_window("main") {
                 let revealed = main_revealed.clone();
@@ -166,6 +171,7 @@ pub fn run() {
             commands::open_vr_hud_preview_cmd,
             commands::vr_recenter_cmd,
             commands::capture_controller_button_cmd,
+            commands::get_mcp_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

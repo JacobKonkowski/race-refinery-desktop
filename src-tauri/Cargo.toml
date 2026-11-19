@@ -45,6 +45,7 @@ race-refinery-audio = { path = "../crates/race-refinery-audio" }
 race-refinery-vr = { path = "../crates/race-refinery-vr" }
 race-refinery-monitor = { path = "../crates/race-refinery-monitor" }
 race-refinery-input = { path = "../crates/race-refinery-input" }
+race-refinery-mcp = { path = "../crates/race-refinery-mcp" }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = [

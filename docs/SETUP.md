@@ -7,7 +7,7 @@
 3. **iRacing** with disk + memory telemetry enabled
 4. Optional: an OpenXR VR runtime for the in-headset HUD
 
-Analyze Insights are computed in the app from imported laps (no external AI service).
+Analyze Insights are computed in the app from imported laps (no external AI service). An optional localhost MCP server (Settings → MCP, off by default) can expose the same local data to Cursor — see [PRIVACY.md](PRIVACY.md).
 
 ## First install
 

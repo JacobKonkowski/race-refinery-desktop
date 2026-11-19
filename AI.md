@@ -15,3 +15,10 @@ People review and merge the result. AI assistance does not replace review, testi
 ## Product behavior
 
 The Race Refinery app itself does **not** call external AI services for telemetry analysis, coaching, or voice. Insights and coach callouts are local and deterministic. See [docs/PRIVACY.md](docs/PRIVACY.md) and [docs/SETUP.md](docs/SETUP.md).
+
+### Optional MCP bridge (off by default)
+
+Settings can enable a **localhost-only, read-only MCP server** so an external agent host
+(such as Cursor) can query imported session and lap data. Race Refinery still does not
+embed an LLM or send data to the cloud for that path; enablement and the listen URL are
+shown in Settings. Details: [docs/PRIVACY.md](docs/PRIVACY.md).

@@ -19,6 +19,17 @@ Race Refinery is designed to run **entirely on your machine**.
 | OpenXR layer install | Per-user registry + staged DLL under AppData |
 | Logs | Process stdout/stderr when you enable `RUST_LOG` |
 
+## Optional MCP (Cursor) on localhost
+
+Settings includes an **MCP** toggle that is **off by default**. When enabled, Race Refinery
+binds a read-only MCP HTTP endpoint on `127.0.0.1` only (shown in Settings when listening).
+Nothing listens while the toggle is off.
+
+- Tools expose local session / lap / compare / technique / consistency / downsampled trace data already in RR
+- No shared secret: access control is the Settings toggle plus the localhost bind
+- The app does **not** upload telemetry for MCP; any AI host you connect (e.g. Cursor) may
+  see tool results under that host's own settings — that is outside Race Refinery
+
 ## What may appear in logs
 
 When logging is enabled (`RUST_LOG=…`), messages may include:
