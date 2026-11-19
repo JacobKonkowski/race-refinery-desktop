@@ -78,9 +78,9 @@ pub fn push_seconds(units: &mut Vec<SpeechUnit>, seconds: f64) {
     }
 }
 
-/// Tenths under a second, seconds above, then faster / slower. Never says
-/// "0 tenths": anything under a tenth rounds up to one.
-pub fn push_delta(units: &mut Vec<SpeechUnit>, delta_ms: f64) {
+/// Tenths / seconds plus faster or slower (no reference). Prefer [`push_delta`]
+/// for personal-best pace so the line names the reference.
+pub fn push_delta_direction(units: &mut Vec<SpeechUnit>, delta_ms: f64) {
     let tenths = (delta_ms.abs() / 100.0).round().max(1.0) as u32;
     if tenths < 10 {
         push_uint(units, tenths);
@@ -89,6 +89,13 @@ pub fn push_delta(units: &mut Vec<SpeechUnit>, delta_ms: f64) {
         push_seconds(units, delta_ms / 1000.0);
     }
     clip(units, if delta_ms > 0.0 { "slower" } else { "faster" });
+}
+
+/// Tenths under a second, seconds above, then faster / slower than your best.
+/// Never says "0 tenths": anything under a tenth rounds up to one.
+pub fn push_delta(units: &mut Vec<SpeechUnit>, delta_ms: f64) {
+    push_delta_direction(units, delta_ms);
+    clip(units, "your_best");
 }
 
 pub fn push_gap_seconds(units: &mut Vec<SpeechUnit>, gap_s: f32) {
@@ -162,8 +169,9 @@ pub fn clip_label(key: &str) -> Option<&'static str> {
         "seconds" => "seconds",
         "tenth" => "tenth",
         "tenths" => "tenths",
-        "faster" => "faster.",
-        "slower" => "slower.",
+        "faster" => "faster",
+        "slower" => "slower",
+        "your_best" => "than your best.",
         "position" => "P",
         "out_lap" => "out lap.",
         "versus_previous_lap" => "versus previous lap.",
@@ -258,22 +266,45 @@ mod tests {
 
     #[test]
     fn delta_tenths() {
-        assert_eq!(keys(|u| push_delta(u, 350.0)), ["n4", "tenths", "slower"]);
-        assert_eq!(keys(|u| push_delta(u, -280.0)), ["n3", "tenths", "faster"]);
+        assert_eq!(
+            keys(|u| push_delta(u, 350.0)),
+            ["n4", "tenths", "slower", "your_best"]
+        );
+        assert_eq!(
+            keys(|u| push_delta(u, -280.0)),
+            ["n3", "tenths", "faster", "your_best"]
+        );
     }
 
     #[test]
     fn delta_never_says_zero_tenths() {
-        assert_eq!(keys(|u| push_delta(u, 60.0)), ["n1", "tenth", "slower"]);
-        assert_eq!(keys(|u| push_delta(u, -120.0)), ["n1", "tenth", "faster"]);
+        assert_eq!(
+            keys(|u| push_delta(u, 60.0)),
+            ["n1", "tenth", "slower", "your_best"]
+        );
+        assert_eq!(
+            keys(|u| push_delta(u, -120.0)),
+            ["n1", "tenth", "faster", "your_best"]
+        );
     }
 
     #[test]
     fn delta_switches_to_seconds() {
-        assert_eq!(keys(|u| push_delta(u, 960.0)), ["n1", "second", "slower"]);
+        assert_eq!(
+            keys(|u| push_delta(u, 960.0)),
+            ["n1", "second", "slower", "your_best"]
+        );
         assert_eq!(
             keys(|u| push_delta(u, -1_440.0)),
-            ["n1", "point", "n4", "seconds", "faster"]
+            ["n1", "point", "n4", "seconds", "faster", "your_best"]
+        );
+    }
+
+    #[test]
+    fn delta_direction_omits_best_reference() {
+        assert_eq!(
+            keys(|u| push_delta_direction(u, -280.0)),
+            ["n3", "tenths", "faster"]
         );
     }
 

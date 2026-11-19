@@ -61,6 +61,8 @@ impl Rule for FlagsRule {
         let cur = ctx.snap.session_flags;
         let newly_set = |mask: u32| (cur & mask) != 0 && (self.last_flags & mask) == 0;
 
+        // Player-facing SessionFlags only: blue/black mean the client is shown that
+        // flag (being lapped / personal penalty), not another car's state.
         let alert = if newly_set(flags::RED) {
             Some((SpeechPriority::CRITICAL, "flag_red"))
         } else if newly_set(flags::CHECKERED) {
@@ -87,6 +89,10 @@ impl Rule for FlagsRule {
                 plan: wrap_with_radio(settings, SpeechPlan::clip(clip)),
                 mark: Mark::Flags,
             });
+        } else {
+            // Advance the edge baseline when nothing is spoken so ignored bits
+            // (debris, start lights, …) do not look like a perpetual rising edge.
+            self.last_flags = cur;
         }
     }
 
@@ -122,6 +128,24 @@ mod tests {
         (snap, SessionMeta::default())
     }
 
+    fn baseline(rule: &mut FlagsRule, settings: &AppSettings) {
+        let fuel = Vec::<f32>::new();
+        let (snap0, meta) = ctx_with_flags(0);
+        let ctx0 = RaceContext::new(&snap0, &meta, &fuel);
+        rule.before_tick(&ctx0, settings);
+        rule.on_tick(&ctx0, settings, &mut Vec::new());
+    }
+
+    fn clip_key(plan: &SpeechPlan) -> Option<&str> {
+        match plan {
+            SpeechPlan::Clip(k) => Some(k.as_str()),
+            SpeechPlan::Sequence(units) => units.iter().find_map(|u| match u {
+                crate::speech::SpeechUnit::Clip(k) if k != "radio_beep" => Some(k.as_str()),
+                _ => None,
+            }),
+        }
+    }
+
     #[test]
     fn blue_flag_edge_triggers_after_baseline() {
         let settings = AppSettings {
@@ -146,6 +170,92 @@ mod tests {
         assert_eq!(out.len(), 1);
         assert!(matches!(out[0].mark, Mark::Flags));
         assert_eq!(out[0].priority, SpeechPriority::SAFETY);
+        assert_eq!(clip_key(&out[0].plan), Some("flag_blue"));
+    }
+
+    #[test]
+    fn blue_flag_does_not_repeat_while_held() {
+        let settings = AppSettings {
+            audio_flags_enabled: true,
+            audio_radio_effects_enabled: false,
+            ..AppSettings::default()
+        };
+        let mut rule = FlagsRule::new();
+        baseline(&mut rule, &settings);
+        let fuel = Vec::<f32>::new();
+
+        let (snap1, meta1) = ctx_with_flags(flags::BLUE);
+        let ctx1 = RaceContext::new(&snap1, &meta1, &fuel);
+        let mut out = Vec::new();
+        rule.on_tick(&ctx1, &settings, &mut out);
+        assert_eq!(out.len(), 1);
+        rule.apply_mark(&ctx1, &Mark::Flags);
+
+        out.clear();
+        rule.on_tick(&ctx1, &settings, &mut out);
+        assert!(out.is_empty(), "held blue must not spam");
+    }
+
+    #[test]
+    fn debris_does_not_announce_black() {
+        let settings = AppSettings {
+            audio_flags_enabled: true,
+            audio_radio_effects_enabled: false,
+            ..AppSettings::default()
+        };
+        let mut rule = FlagsRule::new();
+        baseline(&mut rule, &settings);
+        let fuel = Vec::<f32>::new();
+
+        let (snap1, meta1) = ctx_with_flags(flags::DEBRIS);
+        let ctx1 = RaceContext::new(&snap1, &meta1, &fuel);
+        let mut out = Vec::new();
+        rule.on_tick(&ctx1, &settings, &mut out);
+        assert!(out.is_empty(), "debris bit must not be treated as black");
+    }
+
+    #[test]
+    fn real_black_flag_announces() {
+        let settings = AppSettings {
+            audio_flags_enabled: true,
+            audio_radio_effects_enabled: false,
+            ..AppSettings::default()
+        };
+        let mut rule = FlagsRule::new();
+        baseline(&mut rule, &settings);
+        let fuel = Vec::<f32>::new();
+
+        let (snap1, meta1) = ctx_with_flags(flags::BLACK);
+        let ctx1 = RaceContext::new(&snap1, &meta1, &fuel);
+        let mut out = Vec::new();
+        rule.on_tick(&ctx1, &settings, &mut out);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].priority, SpeechPriority::CRITICAL);
+        assert_eq!(clip_key(&out[0].plan), Some("flag_black"));
+    }
+
+    #[test]
+    fn debris_then_blue_still_announces_blue() {
+        let settings = AppSettings {
+            audio_flags_enabled: true,
+            audio_radio_effects_enabled: false,
+            ..AppSettings::default()
+        };
+        let mut rule = FlagsRule::new();
+        baseline(&mut rule, &settings);
+        let fuel = Vec::<f32>::new();
+
+        let (snap_d, meta_d) = ctx_with_flags(flags::DEBRIS);
+        let ctx_d = RaceContext::new(&snap_d, &meta_d, &fuel);
+        let mut out = Vec::new();
+        rule.on_tick(&ctx_d, &settings, &mut out);
+        assert!(out.is_empty());
+
+        let (snap_b, meta_b) = ctx_with_flags(flags::DEBRIS | flags::BLUE);
+        let ctx_b = RaceContext::new(&snap_b, &meta_b, &fuel);
+        rule.on_tick(&ctx_b, &settings, &mut out);
+        assert_eq!(out.len(), 1);
+        assert_eq!(clip_key(&out[0].plan), Some("flag_blue"));
     }
 
     #[test]

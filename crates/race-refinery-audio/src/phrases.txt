@@ -65,6 +65,7 @@ sector=Sector.
 out_lap=Out lap.
 versus_previous_lap=Versus previous lap.
 off_session_best=Off session best.
+your_best=Than your best.
 pb_new=New personal best.
 pb_sector=New best sector.
 pace_on_pb=On personal best pace.

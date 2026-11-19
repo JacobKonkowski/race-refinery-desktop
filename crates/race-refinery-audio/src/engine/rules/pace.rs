@@ -222,7 +222,6 @@ impl PaceRule {
                 .filter(|d| d.abs() > 80.0 && ctx.snap.lap_dist_pct > 0.05)
             {
                 if d > 0.0 {
-                    units.push(SpeechUnit::Clip("pace_off_pb_intro".into()));
                     push_delta(&mut units, d);
                 } else {
                     units.push(SpeechUnit::Clip("pace_on_pb".into()));
