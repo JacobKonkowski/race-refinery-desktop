@@ -10,7 +10,7 @@ description = "Audio coach: human-recorded voice packs, clip stitching, and the 
 race-refinery-live = { path = "../race-refinery-live" }
 race-refinery-settings = { path = "../race-refinery-settings" }
 anyhow = "1"
-cpal = "0.15"
+cpal = "0.17"
 hound = "3.5"
 parking_lot = "0.12"
 rodio = { version = "0.19", default-features = false, features = ["wav"] }
